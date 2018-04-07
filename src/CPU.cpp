@@ -5,18 +5,14 @@ CPU::CPU(void): CPU(new MMU(new Cartridge("cart/bgbtest.gb"))) { }
 
 CPU::CPU(MMU* m) {
     mmu = m;
-    
-    for(unsigned int ii = 0; ii < 256; ii++) {
-        uint8_t n = mmu->Read(ii);
-        //fprintf(stderr,("(%.4X): %.2X\n", ii, n);
-    }
+
     IME = 0xFF;
     halt = false;
-    
+
     for (int i = 0; i < 8; i++) {
         regs[i] = 0;
     }
-    
+
     programCounter = 0;
     stackPointer = 0;
     cycles = 0;
@@ -27,7 +23,7 @@ CPU::~CPU(void) {
     // delete[] regs;
     delete mmu;
 }
-    
+
 std::uint16_t CPU::Get(REGISTERS r) {
     return regs[r];
 }
@@ -48,7 +44,7 @@ std::uint16_t CPU::Get(FULL_REGISTERS r) {
             value = regs[REGISTERS::H] << 8 | regs[REGISTERS::L];
             break;
     }
-    
+
     return value;
 }
 
@@ -189,7 +185,7 @@ void CPU::Increment(FULL_REGISTERS r) {
             lo = REGISTERS::L;
             break;
     }
-    
+
     value = (regs[hi] << 8) | regs[lo];
     value++;
     uint8_t top = (value & 0xFF00) >> 8;
@@ -220,7 +216,7 @@ void CPU::Decrement(FULL_REGISTERS r) {
             lo = REGISTERS::L;
             break;
     }
-    
+
     value = (regs[hi] << 8) | regs[lo];
     value--;
     uint8_t top = (value & 0xFF00) >> 8;
@@ -231,9 +227,9 @@ void CPU::Decrement(FULL_REGISTERS r) {
 
 std::uint8_t CPU::ReadPC() {
     uint8_t n = mmu->Read(programCounter++);
-    
+
     //fprintf(stderr,("Input: 0x%.2X\n", n);
-    
+
     return n;
 }
 
@@ -241,10 +237,10 @@ std::uint16_t CPU::ReadPC16() {
     std::uint8_t lo = ReadPC();
     std::uint8_t hi = ReadPC();
     std::uint16_t addr = (((uint16_t)hi) << 8) | lo;
-    
+
     return addr;
 }
-    
+
 uint8_t CPU::PopSP() {
     uint16_t addr = stackPointer++;
     uint8_t n = mmu->Read(addr);
@@ -271,9 +267,19 @@ void CPU::PushSP(uint16_t value) {
     mmu->Write(addr, value);
 }
 
+int loopCounter = 0;
 void CPU::Read() {
     if (!halt) {
-        opcode = ReadPC();
+        // uint16_t pc = programCounter;
+        uint8_t opcode = ReadPC();
+
+        // if (pc == 0xC04F) {
+        //     loopCounter++;
+        // }
+
+        // if (mmu->enableDebugger && loopCounter > 5) {
+        //     std::fprintf(stderr, "%.4X: %.2X\n", pc, opcode);
+        // }
         CheckOpcode(opcode);
     }
 }
@@ -283,7 +289,11 @@ REGISTERS CPU::RegisterParse(uint8_t opcode) {
 }
 
 FULL_REGISTERS CPU::FullRegisterParse(uint8_t opcode) {
-    return (FULL_REGISTERS)(uint8_t)((opcode >> 4) & 0b011); // 4 max full registers
+    uint8_t shft = opcode >> 4;
+    uint8_t and3 = shft & 3;
+    FULL_REGISTERS r = (FULL_REGISTERS)and3;
+
+    return r; // 4 max full registers
 }
 
 
@@ -298,9 +308,9 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0x26: // LD H, n
         case 0x2E: // LD L, n
         {
-            std::uint8_t &reg = regs[RegisterParse(opcode)];
+            REGISTERS r = RegisterParse(opcode);
             std::uint8_t n = ReadPC();
-            reg = n;
+            Set(r, n);
             cycles = 8;
         }
             break;
@@ -314,9 +324,9 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0x68: case 0x69: case 0x6a: case 0x6b: case 0x6c: case 0x6d: case 0x6f: // ld l,reg
         case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c: case 0x7d: case 0x7f: // ld a,reg
         {
-            std::uint8_t &dst = regs[RegisterParse(opcode)];
-            std::uint8_t src = regs[opcode & 0b00000111];
-            dst = src;
+            REGISTERS dst = RegisterParse(opcode);
+            REGISTERS src = (REGISTERS)(opcode & 0b00000111);
+            Set(dst, Get(src));
             cycles = 4;
         }
             break;
@@ -345,7 +355,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0x77: // ld (hl), a
         {
             std::uint16_t mem = Get(FULL_REGISTERS::HL);
-            mmu->Write(mem, regs[RegisterParse(opcode)]);
+            REGISTERS r = (REGISTERS)(opcode & 7);
+            uint8_t val = Get(r);
+            mmu->Write(mem, val);
+
             cycles = 8;
         }
             break;
@@ -370,7 +383,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             std::uint16_t addr = Get(FULL_REGISTERS::DE);
             std::uint8_t n = mmu->Read(addr);
-            // mvprintw(9, 50, "Before: %.2X    After (0x%.4X): %.2X", Get(REGISTERS::A), addr, mmu->Read(addr));
+
             Set(REGISTERS::A, n);
             cycles = 8;
         }
@@ -379,6 +392,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             std::uint16_t addr = ReadPC16();
             std::uint8_t n = mmu->Read(addr);
+
             Set(REGISTERS::A, n);
             cycles = 16;
         }
@@ -423,7 +437,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint16_t addr = 0xFF00 | regs[REGISTERS::C];
             uint8_t n = regs[REGISTERS::A];
-            // mvprintw(9, 50, "Before (0x%.4X): %.2X    After: %.2X", addr, mmu->Read(addr), n);
+
             mmu->Write(addr, n);
             cycles = 8;
         }
@@ -470,11 +484,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t addr = 0xFF00 | n;
             uint8_t a = regs[REGISTERS::A];
             mmu->Write(addr, a);
-            if (mmu->Read(addr) != a) {
-                mvprintw(10,100,"(%.4X): %.2X", addr, mmu->Read(addr));
-                refresh();
-                getch();
-            }
             cycles = 12;
         }
             break;
@@ -495,7 +504,9 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             // 0000 0001
             // 0001 0001
             // 0010 0001
-            Set(FullRegisterParse(opcode), nn);
+            FULL_REGISTERS r = FullRegisterParse(opcode);
+            Set(r, nn);
+
             cycles = 12;
         }
             break;
@@ -508,7 +519,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             break;
         case 0xF9: // ld sp, hl
         {
-            
+
             uint16_t hl = Get(FULL_REGISTERS::HL);
             stackPointer = hl;
             cycles = 8;
@@ -519,20 +530,22 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n = TWOS_COMPLEMENT(ReadPC());
             uint16_t spn = stackPointer + n;
             Set(FULL_REGISTERS::HL, spn);
-            
+
             SetZ(false);
             SetN(false);
             SetCY(IS_FULL_CARRY(stackPointer, n));
             SetH(IS_HALF_CARRY(stackPointer, n));
-            
+
             cycles = 12;
         }
             break;
         case 0x08: // ld (nn), SP
         {
-            uint16_t nn = ReadPC16();
+            // this is off by one based on the write hi; dec; write lo of the mmu
+            // we want sp_lo on nn, and sp_hi on nn+1
+            uint16_t nn = ReadPC16()+1;
             mmu->Write(nn, stackPointer);
-            
+
             cycles = 20;
         }
             break;
@@ -560,93 +573,103 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t nn = PopSP16();// mmu->Read16Bit(addr);
             // remove values from stack
             // mmu->Write(addr, (uint16_t)0x0000);
-            Set(FullRegisterParse(opcode), nn);
+            FULL_REGISTERS r = FullRegisterParse(opcode);
+            if (opcode == 0xF1) {
+                //  0xFF = A register
+                //  0xF0 = F register
+                nn &= 0xFFF0;
+            }
+            Set(r, nn);
+
             cycles = 16;
         }
             break;
-            
+
         /* 8 BIT ALU */
-        
+
         case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x87: // add a,reg
         case 0x88: case 0x89: case 0x8a: case 0x8b: case 0x8c: case 0x8d: case 0x8f: // adc a,reg
         {
-            bool carry = GetCY() && (opcode & 8);
-            uint8_t val = Get((REGISTERS)(opcode & 0b00000111)) + (carry ? 1 : 0);
+            bool carry = GetCY() && ((opcode & 8) != 0);
+
+            REGISTERS r = (REGISTERS)(opcode & 7);
+            uint8_t val = Get(r) + (carry ? 1 : 0);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a + val;
             Set(REGISTERS::A, tot);
-            
+
             SetZ(0 == tot);
             SetN(false);
             SetCY(IS_FULL_CARRY(a, val));
             SetH(IS_HALF_CARRY(a, val));
-            
+
             cycles = 4;
         }
             break;
         case 0x86: // add a, (hl)
         case 0x8E: // adc a, (hl)
         {
-            bool carry = GetCY() && (opcode & 8);
+            bool carry = GetCY() && ((opcode & 8) != 0);
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t val = mmu->Read(addr) + (carry ? 1 : 0);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a + val;
             Set(REGISTERS::A, tot);
-            
+
             SetZ(0 == tot);
             SetN(false);
             SetCY(IS_FULL_CARRY(a, val));
             SetH(IS_HALF_CARRY(a, val));
-            
+
             cycles = 8;
         }
             break;
         case 0xC6: // add a, (nn)
         case 0xCE: // adc a, (nn)
         {
-            bool carry = GetCY() && (opcode & 8);
+            bool carry = GetCY() && ((opcode & 8) != 0);
             uint8_t val = ReadPC() + (carry ? 1 : 0);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a + val;
             Set(REGISTERS::A, tot);
-            
+
             SetZ(0 == tot);
             SetN(false);
             SetCY(IS_FULL_CARRY(a, val));
             SetH(IS_HALF_CARRY(a, val));
-            
+
             cycles = 8;
         }
             break;
         case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x97: // sub a, reg
         case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9F: // sbc a, reg
         {
-            bool carry = GetCY() && (opcode & 8);
-            
-            uint8_t val = Get((REGISTERS)(opcode & 0b00000111)) + (carry ? 1 : 0);
+            bool carry = GetCY() && ((opcode & 8) != 0);
+
+            REGISTERS r = (REGISTERS)(opcode & 7);
+            uint8_t val = Get(r) + (carry ? 1 : 0);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
-            
+
             SetZ(0 == tot);
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
-            
+
             cycles = 4;
         }
             break;
         case 0x96: // sub a, (hl)
         case 0x9E: // sbc a, (hl)
         {
-            bool carry = GetCY() && (opcode & 8);
-            
+            bool carry = GetCY() && ((opcode & 8) != 0);
+
             uint8_t val = Get(FULL_REGISTERS::HL) + (carry ? 1 : 0);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
-            
+
             SetZ(0 == tot);
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
@@ -657,18 +680,18 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0xD6: // sub a, (nn)
         // case 0xDE: // sbc a, (nn) ; documentation labels the opcode as ???
         {
-            bool carry = GetCY() && (opcode & 8);
-            
+            bool carry = GetCY() && ((opcode & 8) != 0);
+
             uint8_t val = ReadPC() + (carry ? 1 : 0);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
-            
+
             SetZ(0 == tot);
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
-            
+
             cycles = 8;
         }
             break;
@@ -678,12 +701,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a & val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetH(true);
             SetCY(false);
-            
+
             cycles = 4;
         }
             break;
@@ -691,32 +714,32 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t val = mmu->Read(addr);
-            
+
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a & val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetH(true);
             SetCY(false);
-            
+
             cycles = 8;
         }
             break;
         case 0xE6: // and a, (nn)
         {
             uint8_t val = ReadPC();
-            
+
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a & val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetH(true);
             SetCY(false);
-            
+
             cycles = 8;
         }
             break;
@@ -726,12 +749,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a | val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetH(false);
             SetCY(false);
-            
+
             cycles = 4;
         }
             break;
@@ -739,32 +762,32 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t val = mmu->Read(addr);
-            
+
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a | val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetH(false);
             SetCY(false);
-            
+
             cycles = 8;
         }
             break;
         case 0xF6: // or a, (nn)
         {
             uint8_t val = ReadPC();
-            
+
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a | val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetH(false);
             SetCY(false);
-            
+
             cycles = 8;
         }
             break;
@@ -774,12 +797,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a ^ val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetCY(false);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
@@ -787,47 +810,47 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t val = mmu->Read(addr);
-            
+
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a ^ val;
             Set(REGISTERS::A, result);
-            
+
             SetZ(0 == result);
             SetN(false);
             SetCY(false);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
         case 0xEE: // xor a, (nn)
         {
             uint8_t val = ReadPC();
-            
+
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a ^ val;
             Set(REGISTERS::A, result);
-            
-            SetZ(0 == result);
+
+            SetZ(0 == Get(REGISTERS::A));
             SetN(false);
             SetCY(false);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
-        
+
         case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF: // cp a, reg
         {
             uint8_t val = Get((REGISTERS)(opcode & 0b00000111));
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
-            
+
             SetZ(0 == tot);
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
-            
+
             cycles = 4;
         }
             break;
@@ -849,12 +872,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t val = ReadPC();
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
-            
+
             SetZ(0 == tot);
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
-            
+
             cycles = 8;
         }
             break;
@@ -871,12 +894,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t prev = Get(r);
             Increment(r);
             uint8_t next = Get(r);
-            
+
             SetZ(0 == next);
             SetN(false);
             // unaffected SetCY(); //unaffected
             SetH(IS_HALF_CARRY(prev, 1));
-            
+
             cycles = 4;
         }
             break;
@@ -886,12 +909,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t prev = mmu->Read(addr);
             uint8_t next = prev + 1;
             mmu->Write(addr, next);
-            
+
             SetZ(0 == next);
             SetN(false);
             // unaffected SetCY(); //unaffected
             SetH(IS_HALF_CARRY(prev, 1));
-            
+
             cycles = 12;
         }
             break;
@@ -908,12 +931,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t prev = Get(r);
             Decrement(r);
             uint8_t next = Get(r);
-            
+
             SetZ(0 == next);
             SetN(true);
             // unaffected SetCY(); //unaffected
             SetH(IS_HALF_BORROW(prev, 1));
-            
+
             cycles = 4;
         }
             break;
@@ -923,12 +946,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint8_t prev = mmu->Read(addr);
             uint8_t next = prev - 1;
             mmu->Write(addr, next);
-            
+
             SetZ(0 == next);
             SetN(true);
             // unaffected SetCY(); //unaffected
             SetH(IS_HALF_BORROW(prev, 1));
-            
+
             cycles = 12;
         }
             break;
@@ -938,11 +961,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t hl = Get(FULL_REGISTERS::HL);
             uint16_t total = src + hl;
             Set(FULL_REGISTERS::HL, total);
-            
+
             SetN(false);
             SetCY(IS_FULL_CARRY16(hl, src));
             SetH(IS_FULL_CARRY16(hl, src));
-            
+
             cycles = 8;
         }
             break;
@@ -952,11 +975,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t hl = Get(FULL_REGISTERS::HL);
             uint16_t total = src + hl;
             Set(FULL_REGISTERS::HL, total);
-            
+
             SetN(false);
             SetCY(IS_FULL_CARRY16(hl, src));
             SetH(IS_FULL_CARRY16(hl, src));
-            
+
             cycles = 8;
         }
             break;
@@ -965,40 +988,40 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n = TWOS_COMPLEMENT(ReadPC());
             uint16_t sp = stackPointer;
             stackPointer = sp + n;
-            
+
             SetZ(false);
             SetN(false);
             SetCY(IS_FULL_CARRY16(sp, n));
             SetH(IS_FULL_CARRY16(sp, n));
-            
+
             cycles = 16;
         }
             break;
         case 0x03: case 0x13: case 0x23: // inc nn
         {
             Increment(FullRegisterParse(opcode));
-            
+
             cycles = 8;
         }
             break;
         case 0x33: // inc nn
         {
             stackPointer++;
-            
+
             cycles = 8;
         }
             break;
         case 0x0B: case 0x1B: case 0x2B: // dec nn
         {
             Decrement(FullRegisterParse(opcode));
-            
+
             cycles = 8;
         }
             break;
         case 0x3B: // dec nn
         {
             stackPointer--;
-            
+
             cycles = 8;
         }
             break;
@@ -1010,58 +1033,65 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0x27: // DAA
         {
             uint8_t a = Get(REGISTERS::A);
-            if (!GetN()) {
-                if (GetH() || (a & 0xF) > 9) {
-                    a += 0x06;
-                }
-                
-                if (GetCY() || (a > 0x9F)) {
-                    a += 0x60;
-                }
-            } else {
-                if (GetH()) {
-                    a = (a - 6) & 0xFF;
-                }
-                
-                if (GetCY()) {
-                    a -= 0x60;
-                }
+            uint8_t f = Get(REGISTERS::F);
+
+            uint16_t op = a;
+
+            if (! (f & FLAGS::N))
+            {
+                if ((f & FLAGS::H) || (op & 0xF) > 9)
+                    op += 0x06;
+
+                if ((f & FLAGS::CY) || op > 0x9F)
+                    op += 0x60;
             }
-            
-            SetH(false);
-            SetZ(false);
-            
-            if ((a & 0x100) == 0x100) {
-                SetCY(true);
+            else
+            {
+                if (f & FLAGS::H)
+                    op = (op - 6) & 0xFF;
+
+                if (f & FLAGS::CY)
+                    op -= 0x60;
             }
-            
-            a &= 0xFF;
-            
-            SetZ(0 == a);
-            
+
+            f &= ~(FLAGS::H | FLAGS::Z);
+
+            if ((op & 0x100) == 0x100)
+                f |= FLAGS::CY;
+
+            op &= 0xFF;
+
+            if (op == 0)
+                f |= FLAGS::Z;
+
+            std::fprintf(stderr, "%d %d %.2X\n", a, op, f);
+            a = (uint8_t)op;
+
             Set(REGISTERS::A, a);
-            
+            Set(REGISTERS::F, f);
+
             cycles = 4;
+
         }
             break;
         case 0x2F: // cpl A
         {
             uint8_t a = ~Get(REGISTERS::A);
             Set(REGISTERS::A, a);
-            
+
             SetN(true);
             SetH(true);
-            
+
             cycles = 4;
         }
             break;
         case 0x3F: // ccf
         {
             SetCY(!GetCY());
-            
+
             SetN(false);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
@@ -1070,31 +1100,25 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             SetCY(true);
             SetN(false);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
         case 0x00: // NOP
         {
-            //std::cerr << "NOP" << std::endl;
-            mvprintw(0, 80, "NOP");
-            refresh();
+            std::cout << "NOP" << std::endl;
             cycles = 4;
         }
             break;
         case 0x76: // HALT
         {
-            //std::cerr << "HALT" << std::endl;
-            mvprintw(0, 80, "HALT");
-            refresh();
+            std::cout << "HALT" << std::endl;
             cycles = 4;
         }
             break;
         case 0x10: // STOP
         {
-            //std::cerr << "STOP" << std::endl;
-            mvprintw(0, 80, "STOP");
-            refresh();
+            std::cout << "STOP" << std::endl;
             cycles = 4;
         }
             break;
@@ -1118,30 +1142,30 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint8_t a = Get(REGISTERS::A);
             uint8_t c = a >> 7;
-            a = a << 1 | c;
+            a = (a << 1) | c;
             Set(REGISTERS::A, a);
-            
+
             SetZ(false);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
         case 0x17: // rla
         {
             uint8_t a = Get(REGISTERS::A);
-            uint8_t cy = GetCY() != 0 ? 0b00000001 : 0b00000000;
+            uint8_t cy = GetCY() != 0 ? 0x01 : 0x00;
             uint8_t c = (a & 0b10000000);
-            a = a << 1 | cy;
+            a = (a << 1) | cy;
             Set(REGISTERS::A, a);
-            
+
             SetZ(false);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
@@ -1149,30 +1173,30 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint8_t a = Get(REGISTERS::A);
             uint8_t c = (a & 0b00000001) << 7;
-            a = a >> 1 | c;
+            a = (a >> 1) | c;
             Set(REGISTERS::A, a);
-            
+
             SetZ(false);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
         case 0x1F: // rra
         {
             uint8_t a = Get(REGISTERS::A);
-            uint8_t cy = GetCY() != 0 ? 0b10000000 : 0b00000001;
-            uint8_t c = (a & 0b00000001) << 7;
-            a = a >> 1 | cy;
+            uint8_t cy = GetCY() != 0 ? 0x80 : 0x00;
+            uint8_t c = (a & 1) << 7;
+            a = (a >> 1) | cy;
             Set(REGISTERS::A, a);
-            
+
             SetZ(false);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 4;
         }
             break;
@@ -1180,60 +1204,59 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint16_t nn = ReadPC16();
             programCounter = nn;
-            
+
             cycles = 12;
         }
             break;
         case 0xC2: // jpnz
         {
             uint16_t nn = ReadPC16();
-            
+
             if (!GetZ()) {
                 programCounter = nn;
-            } 
-            
+            }
+
             cycles = 12;
         }
             break;
         case 0xCA: // jpz
         {
             uint16_t nn = ReadPC16();
-                
+
             if (GetZ()) {
                 programCounter = nn;
             }
-            
+
             cycles = 12;
         }
             break;
         case 0xD2: // jpnc
         {
             uint16_t nn = ReadPC16();
-            
+
             if (!GetCY()) {
                 programCounter = nn;
-            } 
-            
+            }
+
             cycles = 12;
         }
             break;
         case 0xDA: // jpc
         {
             uint16_t nn = ReadPC16();
-            
+
             if (GetCY()) {
                 programCounter = nn;
             }
-            
+
             cycles = 12;
         }
             break;
         case 0xE9: // jphl
         {
-            uint16_t addr = Get(FULL_REGISTERS::HL);
-            uint16_t nn = mmu->Read(addr);
+            uint16_t nn = Get(FULL_REGISTERS::HL);
             programCounter = nn;
-            
+
             cycles = 4;
         }
             break;
@@ -1241,7 +1264,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             int8_t n = TWOS_COMPLEMENT(ReadPC());
             programCounter += n;
-            
+
             cycles = 8;
         }
             break;
@@ -1249,11 +1272,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint8_t un = ReadPC();
             int8_t n =  TWOS_COMPLEMENT(un);
-            
+
             if (!GetZ()) {
                 programCounter += n;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1264,7 +1287,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             if (GetZ()) {
                 programCounter += n;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1274,9 +1297,9 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n =  TWOS_COMPLEMENT(un);
             if (!GetCY()) {
                 programCounter += n;
-                
+
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1287,7 +1310,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             if (GetCY()) {
                 programCounter += n;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1299,11 +1322,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             // mmu->Write(addr, programCounter);
             PushSP(programCounter);
             programCounter = nn;
-            
+
             cycles = 12;
         }
             break;
-        
+
         case 0xC4: // call nz.n
         {
             uint16_t nn = ReadPC16();
@@ -1311,11 +1334,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //stackPointer--;
                 //uint16_t addr = stackPointer--;
                 //mmu->Write(addr, programCounter);
-                
+
                 PushSP(programCounter);
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1326,11 +1349,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //stackPointer--;
                 //uint16_t addr = stackPointer--;
                 //mmu->Write(addr, programCounter);
-                
+
                 PushSP(programCounter);
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1341,11 +1364,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //stackPointer--;
                 //uint16_t addr = stackPointer--;
                 //mmu->Write(addr, programCounter);
-                
+
                 PushSP(programCounter);
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1356,11 +1379,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //stackPointer--;
                 //uint16_t addr = stackPointer--;
                 //mmu->Write(addr, programCounter);
-                
+
                 PushSP(programCounter);
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1369,10 +1392,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             //stackPointer--;
             //uint16_t addr = stackPointer--;
             //mmu->Write(addr, programCounter);
-                
+
             PushSP(programCounter);
             programCounter = 0x0000 | (opcode - 0xC7);
-            
+
             cycles = 32;
         }
             break;
@@ -1383,7 +1406,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             //uint16_t nn = mmu->Read16Bit(addr);
             uint16_t nn = PopSP16();
             programCounter = nn;
-            
+
             cycles = 8;
         }
             break;
@@ -1396,7 +1419,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 uint16_t nn = PopSP16();
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1409,7 +1432,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 uint16_t nn = PopSP16();
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1422,7 +1445,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 uint16_t nn = PopSP16();
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1435,7 +1458,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 uint16_t nn = PopSP16();
                 programCounter = nn;
             }
-            
+
             cycles = 8;
         }
             break;
@@ -1447,7 +1470,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             IME = 0xFF;
             uint16_t nn = PopSP16();
             programCounter = nn;
-            
+
             cycles = 8;
         }
             break;
@@ -1461,7 +1484,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 }
 
 void CPU::CheckExtension(uint8_t opcode) {
-    std::uint8_t cycles = 0;
     // gpu->Print(8,0,debugBuffer);
     switch (opcode) {
         case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x37: // swap n
@@ -1472,12 +1494,12 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint8_t newLo = old & 0xF0 >> 4;
             uint8_t swap = newHi | newLo;
             Set(r, swap);
-            
+
             SetZ(0 == swap);
             SetN(false);
             SetCY(false);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
@@ -1489,12 +1511,12 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint8_t newLo = old & 0xF0 >> 4;
             uint8_t swap = newHi | newLo;
             mmu->Write(addr, swap);
-            
+
             SetZ(0 == swap);
             SetN(false);
             SetCY(false);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
@@ -1504,14 +1526,14 @@ void CPU::CheckExtension(uint8_t opcode) {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
             uint8_t a = Get(r);
             uint8_t c = a >> 7;
-            a = a << 1 | c;
+            a = (a << 1) | c;
             Set(r, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
@@ -1520,14 +1542,14 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t a = mmu->Read(addr);
             uint8_t c = a >> 7;
-            a = a << 1 | c;
+            a = (a << 1) | c;
             mmu->Write(addr, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
@@ -1535,17 +1557,17 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x17: // rl reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            
+
             uint8_t a = Get(r);
-            uint8_t cy = GetCY() != 0 ? 0b00000001 : 0b00000000;
+            uint8_t cy = GetCY() != 0 ? 1 : 0;
             uint8_t c = a >> 7;
-            a = a << 1 | cy;
+            a = (a << 1) | cy;
             Set(r, a);
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
@@ -1555,32 +1577,32 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint8_t a = mmu->Read(addr);
             uint8_t cy = GetCY() != 0 ? 0b00000001 : 0b00000000;
             uint8_t c = a >> 7;
-            a = a << 1 | cy;
+            a = (a << 1) | cy;
             mmu->Write(addr, a);
-            
+
             SetZ(a);
             SetN(false);
             SetCY(c);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
             /* RRC */
-            
+
         case 0x08: case 0x09: case 0x0A: case 0x0B: case 0x0C: case 0x0D: case 0x0F: // rrc reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
             uint8_t a = Get(r);
             uint8_t c = (a & 0b00000001) << 7;
-            a = a >> 1 | c;
+            a = (a >> 1) | c;
             Set(r, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
@@ -1589,14 +1611,14 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t a = mmu->Read(addr);
             uint8_t c = (a & 0b00000001) << 7;
-            a = a >> 1 | c;
+            a = (a >> 1) | c;
             mmu->Write(addr, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
@@ -1604,18 +1626,18 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1F: // rr reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            
+
             uint8_t a = Get(r);
-            uint8_t cy = GetCY() != 0 ? 0b10000000 : 0b00000000;
+            uint8_t cy = GetCY() != 0 ? 0x80 : 0x00;
             uint8_t c = (a & 0b00000001) << 7;
-            a = a >> 1 | cy;
+            a = (a >> 1) | cy;
             Set(r, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
@@ -1623,133 +1645,133 @@ void CPU::CheckExtension(uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t a = mmu->Read(addr);
-            uint8_t cy = GetCY() != 0 ? 0b10000000 : 0b00000000;
+            uint8_t cy = GetCY() != 0 ? 0x80 : 0x00;
             uint8_t c = (a & 0b00000001) << 7;
-            a = a >> 1 | cy;
+            a = (a >> 1) | cy;
             mmu->Write(addr, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
-            
+
         /* SLA n */
         case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x27: // sla reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            
+
             uint8_t a = Get(r);
             uint8_t c = a >> 7;
-            a = a << 1;
+            a = (a << 1);
             Set(r, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
         case 0x26: // sla (hl)
         {
-            
+
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            
+
             uint8_t a = mmu->Read(addr);
             uint8_t c = a >> 7;
-            a = a << 1;
+            a = (a << 1);
             mmu->Write(addr, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
-            
+
         /* SRA n */
         case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2F: // sra reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            
+
             uint8_t a = Get(r);
             uint8_t msb = a & 0b10000000;
             uint8_t c = a & 0b00000001;
-            a = a >> 1 | msb;
+            a = (a >> 1) | msb;
             Set(r, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
         case 0x2E: // sra (hl)
         {
-            
+
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            
+
             uint8_t a = mmu->Read(addr);
             uint8_t msb = a & 0b10000000;
             uint8_t c = a & 0b00000001;
-            a = a >> 1 | msb;
+            a = (a >> 1) | msb;
             mmu->Write(addr, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
-            
+
         /* SRL n */
         case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3F: // srl reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            
+
             uint8_t a = Get(r);
             uint8_t c = a & 0b00000001;
-            a = a >> 1;
+            a = (a >> 1);
             Set(r, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 8;
         }
             break;
         case 0x3E: // sra (hl)
         {
-            
+
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            
+
             uint8_t a = mmu->Read(addr);
             uint8_t c = a & 0b00000001;
-            a = a >> 1;
+            a = (a >> 1);
             mmu->Write(addr, a);
-            
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
             SetH(false);
-            
+
             cycles = 16;
         }
             break;
-            
+
         /* BIT b,r */
         case 0x40: case 0x41: case 0x42: case 0x43: case 0x44: case 0x45: case 0x47: // bit 0, reg
         case 0x48: case 0x49: case 0x4A: case 0x4B: case 0x4C: case 0x4D: case 0x4F: // bit 1, reg
@@ -1763,15 +1785,15 @@ void CPU::CheckExtension(uint8_t opcode) {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
             uint8_t bit = (opcode ^ 0x40) >> 3;
             uint8_t b = 1 << bit;
-            
+
             uint8_t reg = Get(r);
             uint8_t result = reg & b;
-            
+
             SetZ(b != result);
-            
+
             SetN(false);
             SetH(true);
-            
+
             cycles = 8;
             break;
         }
@@ -1789,16 +1811,16 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint8_t bit = (opcode ^ 0x40) >> 3;
             uint8_t b = 1 << bit;
             uint8_t mem = mmu->Read(addr);
-            
+
             SetZ(!(mem & b));
-            
+
             SetN(false);
             SetH(true);
-            
+
             cycles = 16;
         }
             break;
-            
+
         /* SET b,r */
         case 0xC0: case 0xC1: case 0xC2: case 0xC3: case 0xC4: case 0xC5: case 0xC7: // SET 0, reg
         case 0xC8: case 0xC9: case 0xCA: case 0xCB: case 0xCC: case 0xCD: case 0xCF: // SET 1, reg
@@ -1810,13 +1832,13 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFF: // SET 7, reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            uint8_t bit = (opcode ^ 0xC0) >> 3;
+            uint8_t bit = (opcode - 0xC0) / 8;
             uint8_t b = 1 << bit;
-            
+
             uint8_t val = Get(r);
             val = val | b;
             Set(r, val);
-            
+
             cycles = 8;
         }
             break;
@@ -1830,20 +1852,20 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xFE: // SET 7, (hl)
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            uint8_t bit = (opcode ^ 0xC0) >> 3;
+            uint8_t bit = (opcode - 0xC0) / 8;
             uint8_t b = 1 << bit;
-            
+
             uint8_t mem = mmu->Read(addr);
             mem = mem | b;
             mmu->Write(addr, mem);
-            
+
             SetN(false);
             SetH(true);
-            
+
             cycles = 16;
         }
             break;
-            
+
         /* RES b,r */
         case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x87: // RES 0, reg
         case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8C: case 0x8D: case 0x8F: // RES 1, reg
@@ -1855,14 +1877,14 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF: // RES 7, reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            uint8_t bit = (opcode ^ 0x80) >> 3;
+            uint8_t bit = (opcode - 0x80) / 8;
             uint8_t b = 1 << bit;
             b = ~b;
-            
+
             uint8_t val = Get(r);
             val = val & b;
             Set(r, val);
-            
+
             cycles = 8;
         }
             break;
@@ -1879,14 +1901,14 @@ void CPU::CheckExtension(uint8_t opcode) {
             uint8_t bit = (opcode ^ 0x80) >> 3;
             uint8_t b = 1 << bit;
             b = ~b;
-            
+
             uint8_t mem = mmu->Read(addr);
             mem = mem & b;
             mmu->Write(addr, mem);
-            
+
             SetN(false);
             SetH(true);
-            
+
             cycles = 16;
         }
             break;
@@ -1910,7 +1932,7 @@ void CPU::CheckRegisters() {
     if(Get(REGISTERS::L) != 0x4D) { std::cout << "Failed on register l" << std::endl; exit(1); }
     if(stackPointer != 0xFFFE) { std::cout << "Failed on registers sp" << std::endl; exit(1); }
     if(programCounter != 0x0100) { std::cout << "Failed on registers pc" << std::endl; exit(1); }
-    
+
     if (GetZ() != 0x1) { std::cout << "Failed on flag Z" << std::endl; exit(1); }
     if (GetN() != 0x0) { std::cout << "Failed on flag N" << std::endl; exit(1); }
     if (GetH() != 0x1) { std::cout << "Failed on flag H" << std::endl; exit(1); }

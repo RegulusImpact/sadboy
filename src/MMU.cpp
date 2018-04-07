@@ -3,13 +3,18 @@
 #include "MMU.h"
 
 MMU::MMU(Cartridge* crt) {
-    uint32_t fileSize = crt->GetFileSize();
     for (uint32_t ii = 0; ii < 0x8000; ii++) {
         cart[ii] = crt->Read(ii);
     }
-    
+
+    palette[0] = 0;
+    palette[1] = 1;
+    palette[2] = 2;
+    palette[3] = 3;
+
     readBios = true;
-    
+    enableDebugger = false;
+
     loadBootrom();
 }
 
@@ -18,13 +23,13 @@ MMU::~MMU() {
     // delete[] RAM;
 }
 
-    
+
 std::uint8_t MMU::Read(uint16_t addr) {
     // cartridge / bios
     if (addr <= 0x7FFF) {
         if (readBios && addr < 0xFF)
             return bios[addr];
-        
+
         return cart[addr];
     }
     // sram
@@ -33,24 +38,24 @@ std::uint8_t MMU::Read(uint16_t addr) {
     // video ram
     else if (addr >= 0x8000 && addr <= 0x9FFF)
         return vram[addr - 0x8000];
-        
+
     // writable ram
     else if (addr >= 0xC000 && addr <= 0xDFFF)
         return wram[addr - 0xC000];
-        
+
     // more writable ram
     else if (addr >= 0xE000 && addr <= 0xFDFF)
         return wram[addr - 0xE000];
-        
+
     // oam
     else if (addr >= 0xFE00 && addr <= 0xFEFF)
         return oam[addr - 0xFE00];
-        
+
     // io
     // this includes FFOO - user input joypad
     // timers
     // gpu
-    
+
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         return hram[addr - 0xFF80];
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
@@ -58,13 +63,13 @@ std::uint8_t MMU::Read(uint16_t addr) {
     }
     else if (addr == 0xFFFF)
         return interrupt;
-        
+
     return 0;
 }
-    
+
 std::uint16_t MMU::Read16Bit(uint16_t addr) {
     uint16_t value = 0;
-    
+
     uint16_t lo = (uint16_t)Read(addr);
     uint16_t hi = (uint16_t)Read(addr+1);
     value = (hi << 8) | lo;
@@ -73,8 +78,8 @@ std::uint16_t MMU::Read16Bit(uint16_t addr) {
 
 void MMU::Write(uint16_t addr, uint8_t val) {
     // RAM[addr] = val;
-    
-    
+
+
     // cartridge / bios
     // we don't write to cart
     // if (addr <= 0x7FFF)
@@ -84,103 +89,101 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         sram[addr - 0xA000] = val;
     // video ram
     else if (addr >= 0x8000 && addr <= 0x9FFF) {
-        
+
         vram[addr - 0x8000] = val;
         if (addr <= 0x97FF)
             UpdateTile(addr, val);
     }
-        
+
     // writable ram
     else if (addr >= 0xC000 && addr <= 0xDFFF)
         wram[addr - 0xC000] = val;
-        
+
     // more writable ram
     else if (addr >= 0xE000 && addr <= 0xFDFF)
         wram[addr - 0xE000] = val;
-        
+
     // oam
     else if (addr >= 0xFE00 && addr <= 0xFEFF)
         oam[addr - 0xFE00] = val;
-        
+
     // io
     // this includes FFOO - user input joypad
     // timers
     // gpu
-    
+
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         hram[addr - 0xFF80] = val;
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {\
         // io[addr - 0xFF00] = val;
-        
-        if (addr == 0xFF40)
+
+        if (addr == 0xFF0F) {
+            if (Read(0xFFFF) > 0) {
+                io[addr - 0xFF00] = val;
+            }
+        } else if (addr == 0xFF40)
             io[addr - 0xFF00] = val;
-        
+
         else if (addr == 0xFF42)
             io[addr - 0xFF00] = val;
-        
+
         else if (addr == 0xFF43)
             io[addr - 0xFF00] = val;
-        
+
         else if (addr == 0xFF46) {
             Copy(0xFE00, ((uint16_t)val) << 8, 160); // oam dma
-            
+
             io[addr - 0xFF00] = val;
         }
-            
+
         else if (addr == 0xFF47) { // setup bgp
             for (int ii = 0; ii < 4; ii++) {
                 bgp[ii] = palette[(val >> ( ii * 2)) & 3];
             }
-        
+
             io[addr - 0xFF00] = val;
         }
-            
+
         else if (addr == 0xFF48) { // setup OBP0 ; sprites
             for (int ii = 0; ii < 4; ii++) {
                 obp[0][ii] = palette[(val >> ( ii * 2)) & 3];
             }
-        
+
             io[addr - 0xFF00] = val;
         }
-            
+
         else if (addr == 0xFF49) { // setup OBP1 ; sprites
             for (int ii = 0; ii < 4; ii++) {
                 obp[1][ii] = palette[(val >> ( ii * 2)) & 3];
             }
-        
+
+            io[addr - 0xFF00] = val;
+        } else {
             io[addr - 0xFF00] = val;
         }
-        
-        io[addr - 0xFF00] = val;
-        
     }
     else if (addr == 0xFFFF)
         interrupt = val;
-        
+
     if (0xFF50 == addr && 1 == val) {
         readBios = false;
     }
-        
-    
+
+
     // oh christ what are we doing....
     if (addr == 0xFF02) {// || addr == 0x0081) {
         char c = Read(0xFF01);
-        mvprintw(15, 90, "hy: %.2X hx: %.2X", hy, hx);
-        
+
         if (c == '\n' || c == '\r') {
-            mvprintw(hy, hx, " ", hy, hx);
             hy++;
             hx = 0;
+            std::cout << std::endl;
+
+            // probably the title when the first newline occurs
+            enableDebugger = true;
         } else if (c >= 0x20 && c <= 0xFE) {
             //c[0] = Read(0xFF01);
-            mvprintw(hy, hx++, "%C", c);
-            
-            if (hx > 80) {
-                hy++;
-                hx = 0;
-            }
-            
-            refresh();
+            std::cout << c;
         }
     }
 }
@@ -189,38 +192,38 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 void MMU::Write(uint16_t addr, uint16_t val) {
     // RAM[addr] = (uint8_t)((val & 0xFF00) >> 8);
     // RAM[(addr-1)] = (uint8_t)(val & 0x00FF);
-    
+
     Write(addr, (uint8_t)((val & 0xFF00) >> 8));
     Write((addr-1), (uint8_t)(val & 0x00FF));
 }
 
 void MMU::Copy(uint16_t destination, uint16_t source, size_t length) {
-    for (int ii = 0; ii < length; ii++) {
+    for (size_t ii = 0; ii < length; ii++) {
         Write(destination + ii, Read(source + ii));
     }
 }
 
 void MMU::UpdateTile(uint16_t address, uint8_t value) {
 	address &= 0x1FFE;
-	
+
 	uint16_t tile = (address >> 4) & 511;
 	uint16_t y = (address >> 1) & 7;
-	
+
 	uint8_t x, bitIndex;
 	for(x = 0; x < 8; x++) {
 		bitIndex = 1 << (7 - x);
-		
+
 		//((unsigned char (*)[8][8])tiles)[tile][y][x] = ((vram[address] & bitIndex) ? 1 : 0) + ((vram[address + 1] & bitIndex) ? 2 : 0);
 		tiles[tile][y][x] = ((vram[address] & bitIndex) ? 1 : 0) + ((vram[address + 1] & bitIndex) ? 2 : 0);
 	}
-	
+
 	#ifdef DS
 		dirtyTileset = 1;
 	#endif
 }
 
 
-    
+
 void MMU::CheckMemory() {
     if (Read(0xFF05) != 0x00) { std::cout << "failed on FF0F" << std::endl; exit(1); } // TIMA
     if (Read(0xFF06) != 0x00) { std::cout << "failed on FF0F" << std::endl; exit(1); } // TMA

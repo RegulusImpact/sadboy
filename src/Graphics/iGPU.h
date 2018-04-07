@@ -19,12 +19,12 @@ protected:
         HBLANK,
         VBLANK
     };
-    
+
     GPU_MODE mode = GPU_MODE::OAM;
     std::uint32_t clocks;
     bool bgmap; // false = 0, true = 1
     bool bgtile; // false = 0, true = 1
-    
+
 public:
     iGPU(){}
     virtual ~iGPU(){}
@@ -39,9 +39,9 @@ public:
     virtual std::uint8_t GetScrollX()=0;
     virtual std::uint8_t GetScrollY()=0;
     virtual std::uint8_t GetScanline()=0;
-    
+
     //std::uint8_t GetClocks()      { return clocks; }
-    
+
     // Setters
     /*
     void SetControl(std::uint8_t val)   { mmu->Write(0xFF40, val); }
@@ -49,14 +49,14 @@ public:
     void SetScrollY(std::uint8_t val)   { mmu->Write(0xFF43, val); }
     void SetScanline(std::uint8_t val)  { mmu->Write(0xFF44, val); }
     */
-    
+
     virtual void SetControl(std::uint8_t val)=0;
     virtual void SetScrollX(std::uint8_t val)=0;
     virtual void SetScrollY(std::uint8_t val)=0;
     virtual void SetScanline(std::uint8_t val)=0;
     virtual uint8_t IncrementScanline()=0;
     virtual void ResetScanline()=0;
-    
+
     virtual void Draw(uint8_t color, uint8_t y, uint8_t x)=0;
     virtual void DumpTileset()=0;
     //void SetClocks(std::uint8_t val)      { clocks = val; }

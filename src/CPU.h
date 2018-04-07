@@ -30,7 +30,7 @@
 /* Two's Complement uint8_t to int8_t */
 /* stolen from pablo's brain
     if (value > 127) {
-        value = -((~value + 1) & 255); 
+        value = -((~value + 1) & 255);
      }
 */
 #define TWOS_COMPLEMENT(x) ( static_cast<int8_t>(x) )
@@ -64,25 +64,24 @@ class CPU {
 private:
     std::uint8_t regs[8];
     std::uint8_t cycles;
-    
+
     std::uint8_t IME;
-    
+
     MMU* mmu;
-    TextGPU* gpu;
-    
+
     void CheckOpcode(uint8_t opcode);
     void CheckExtension(uint8_t opcode);
     std::uint8_t ReadPC();
     std::uint16_t ReadPC16();
-    
+
     REGISTERS RegisterParse(uint8_t opcode);
     FULL_REGISTERS FullRegisterParse(uint8_t opcode);
-    
+
 public:
     CPU();
     CPU(MMU* m);
     ~CPU();
-    
+
     std::uint16_t programCounter;
     std::uint16_t stackPointer;
     std::uint8_t opcode;
@@ -100,43 +99,43 @@ public:
 
     std::uint16_t Get(REGISTERS);
     std::uint16_t Get(FULL_REGISTERS);
-    
+
     void Set(REGISTERS, uint8_t);
     void Set(FULL_REGISTERS r, std::uint16_t);
-    
+
     void Set(FLAGS f);
     void Clear(FLAGS f);
-    
+
     void SetZ(bool b);
     void SetN(bool b);
     void SetCY(bool b);
     void SetH(bool b);
-    
+
     bool GetZ();
     bool GetN();
     bool GetCY();
     bool GetH();
-    
+
     uint8_t GetIME();
     void SetIME(uint8_t ime);
-    
+
     uint8_t GetCycles();
     void SetCycles(uint8_t c);
     void AddCycles(uint8_t c);
-    
+
     void Increment(REGISTERS);
     void Decrement(REGISTERS);
     void Increment(FULL_REGISTERS);
     void Decrement(FULL_REGISTERS);
-    
+
     uint8_t PopSP();
     uint16_t PopSP16();
-    
+
     void PushSP(uint8_t value);
     void PushSP(uint16_t value);
-    
+
     void Read();
-    
+
     void CheckRegisters();
 };
 

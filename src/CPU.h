@@ -10,10 +10,8 @@
 #include <string.h>
 
 #include "MMU.h"
-#include "Graphics/TextGPU.h"
 
 // testing
-#include "json/json.h"
 #include <fstream>
 
 /* Full and Half Carry */

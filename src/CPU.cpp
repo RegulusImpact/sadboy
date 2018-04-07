@@ -1477,7 +1477,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         default:
         {
             fprintf(stderr,"====WARNING: OPCODE: 0x%.2X does not exist. ====", opcode);
-            getch();
         }
             break;
     }
@@ -1915,7 +1914,6 @@ void CPU::CheckExtension(uint8_t opcode) {
         default:
         {
             fprintf(stderr,"====WARNING: OPCODE: 0xCB%.2X does not exist. ====", opcode);
-            getch();
         }
             break;
     }

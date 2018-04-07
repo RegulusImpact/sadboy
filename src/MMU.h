@@ -13,7 +13,6 @@
 #include "Graphics/iGPU.h"
 #include "Cartridge.h"
 #include "Utils.h"
-#include <curses.h>
 
 class MMU {
 private:

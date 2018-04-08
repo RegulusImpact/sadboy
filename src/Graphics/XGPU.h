@@ -47,30 +47,22 @@ public:
     ~XGPU();
 
     // Getters
-    /*
-    std::uint8_t GetControl()   { return mmu->Read(0xFF40); }
-    std::uint8_t GetScrollX()   { return mmu->Read(0xFF42); }
-    std::uint8_t GetScrollY()   { return mmu->Read(0xFF43); }
-    std::uint8_t GetScanline()  { return mmu->Read(0xFF44); }
-    */
+
     std::uint8_t GetControl();
-    std::uint8_t GetScrollX();
+    std::uint8_t GetLCDStat();
     std::uint8_t GetScrollY();
+    std::uint8_t GetScrollX();
     std::uint8_t GetScanline();
 
     //std::uint8_t GetClocks()      { return clocks; }
 
     // Setters
-    /*
-    void SetControl(std::uint8_t val)   { mmu->Write(0xFF40, val); }
-    void SetScrollX(std::uint8_t val)   { mmu->Write(0xFF42, val); }
-    void SetScrollY(std::uint8_t val)   { mmu->Write(0xFF43, val); }
-    void SetScanline(std::uint8_t val)  { mmu->Write(0xFF44, val); }
-    */
+
 
     void SetControl(std::uint8_t val);
-    void SetScrollX(std::uint8_t val);
+    void SetLCDStat(std::uint8_t val);
     void SetScrollY(std::uint8_t val);
+    void SetScrollX(std::uint8_t val);
     void SetScanline(std::uint8_t val);
     uint8_t IncrementScanline();
     void ResetScanline();

@@ -169,6 +169,10 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         readBios = false;
     }
 
+    if (addr == 0xFF42) {
+        printf("%d\n",val);
+    }
+
 
     // oh christ what are we doing....
     if (addr == 0xFF02) {// || addr == 0x0081) {

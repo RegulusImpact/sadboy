@@ -126,14 +126,16 @@ XGPU::~XGPU() {
 }
 // Getters
 std::uint8_t XGPU::GetControl()   { return mmu->Read(0xFF40); }
-std::uint8_t XGPU::GetScrollX()   { return mmu->Read(0xFF42); }
-std::uint8_t XGPU::GetScrollY()   { return mmu->Read(0xFF43); }
+std::uint8_t XGPU::GetLCDStat()   { return mmu->Read(0xFF41); }
+std::uint8_t XGPU::GetScrollY()   { return mmu->Read(0xFF42); }
+std::uint8_t XGPU::GetScrollX()   { return mmu->Read(0xFF43); }
 std::uint8_t XGPU::GetScanline()  { return mmu->Read(0xFF44); }
 
 // Setters
 void XGPU::SetControl(std::uint8_t val)   { mmu->Write(0xFF40, val); }
-void XGPU::SetScrollX(std::uint8_t val)   { mmu->Write(0xFF42, val); }
-void XGPU::SetScrollY(std::uint8_t val)   { mmu->Write(0xFF43, val); }
+void XGPU::SetLCDStat(std::uint8_t val)   { mmu->Write(0xFF41, val); }
+void XGPU::SetScrollY(std::uint8_t val)   { mmu->Write(0xFF42, val); }
+void XGPU::SetScrollX(std::uint8_t val)   { mmu->Write(0xFF43, val); }
 void XGPU::SetScanline(std::uint8_t val)  { mmu->Write(0xFF44, val); }
 
 
@@ -153,9 +155,6 @@ void XGPU::ResetScanline() {
 void XGPU::Step(uint32_t clockStep) {
     clocks += clockStep;
 
-    bgmap = ((mmu->Read(0xFF40) >> 3) & 1) == 1;
-    //bgtile = ((mmu->Read(0xFF40) >> 4) & 1) == 1;
-
     switch (mode) {
         case GPU_MODE::OAM: // 2
         {
@@ -171,7 +170,7 @@ void XGPU::Step(uint32_t clockStep) {
                 clocks = 0;
                 mode = GPU_MODE::HBLANK;
 
-                // RenderScanline();
+                RenderScanline();
             }
         }
             break;
@@ -205,18 +204,23 @@ void XGPU::Step(uint32_t clockStep) {
         }
             break;
     }
+
+    uint8_t lcdStat = GetLCDStat();
+    lcdStat = (lcdStat & 0b11111100) | mode;
+    SetLCDStat(lcdStat);
 }
 
 void XGPU::Hblank() {}
 void XGPU::RenderScanline() {
     // fetch gpu registers
+    uint8_t control = GetControl();
     uint8_t scy = GetScrollY();
     uint8_t scx = GetScrollX();
     uint8_t line = GetScanline();
 
     // which line of tiles to use in which map
-    uint16_t bgmapOffset = bgmap ? 0x1C00 : 0x1800;
-    bgmapOffset += ((line + scy) & 0xFF) >> 3;
+    uint16_t bgmapOffset = (control & GPU_CONTROL_TILEMAP) > 0 ? 0x1C00 : 0x1800;
+    bgmapOffset += ((line + scy)) >> 3;
 
     // which tile
     uint8_t lineOffset = scx >> 3;
@@ -231,7 +235,7 @@ void XGPU::RenderScanline() {
     uint8_t color;
     uint8_t tile = mmu->Read(bgmapOffset + lineOffset);
 
-    if (bgtile && tile < 128) tile += 256;
+    // if (bgtile && tile < 128) tile += 256;
 
     for (int ii = 0; ii < MAX_X; ii++) {
         color = mmu->bgp[mmu->tiles[tile][y][x]];
@@ -243,7 +247,7 @@ void XGPU::RenderScanline() {
             x = 0;
             lineOffset = (lineOffset + 1) & 31;
             tile = mmu->Read(bgmapOffset + lineOffset);
-            if (bgtile && tile < 128) tile += 256;
+            // if (bgtile && tile < 128) tile += 256;
         }
     }
 }

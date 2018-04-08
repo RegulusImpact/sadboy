@@ -1,3 +1,3 @@
 #!/bin/bash
-DISPLAY=localhost:0; export DISPLAY
+export DISPLAY=:0
 ./bin/sadboy

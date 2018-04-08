@@ -1,8 +1,8 @@
 #ifndef iGPU_H
 #define iGPU_H
 
-#define MAX_X 144
-#define MAX_Y 160
+#define MAX_Y 144
+#define MAX_X 160
 
 // uintX_t
 #include <cstdint>
@@ -59,6 +59,7 @@ public:
 
     virtual void Draw(uint8_t color, uint8_t y, uint8_t x)=0;
     virtual void DumpTileset()=0;
+    virtual void DumpTiles()=0;
     //void SetClocks(std::uint8_t val)      { clocks = val; }
 
     // Rendering

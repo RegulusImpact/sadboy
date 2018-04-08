@@ -27,7 +27,7 @@ nt main () {
   result = fread (buffer,1,lSize,pFile);
   if (result != lSize) {fputs ("Reading error",stderr); exit (3);}
 
-   the whole file is now loaded in the memory buffer. 
+   the whole file is now loaded in the memory buffer.
 
   // terminate
   fclose (pFile);
@@ -55,11 +55,7 @@ Cartridge::Cartridge(std::string fileName) {
     if (result != fileSize) {fputs ("Reading error",stderr); exit (3);}
     fclose (file);
 
-    for (int ii = 0; ii < 0x10; ii++) {
-        std::cout << rom[0x134+ii];
-    }
-
-    std::cout << std::endl;
+    printf("File loaded: %s\n", fileName.c_str());
 
     fileLoaded = true;
 }

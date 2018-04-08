@@ -1064,7 +1064,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             if (op == 0)
                 f |= FLAGS::Z;
 
-            std::fprintf(stderr, "%d %d %.2X\n", a, op, f);
             a = (uint8_t)op;
 
             Set(REGISTERS::A, a);

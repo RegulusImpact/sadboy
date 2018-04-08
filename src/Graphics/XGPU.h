@@ -30,6 +30,7 @@ private:
     Window window;
     GC gc;
     Colormap cmap;
+    uint32_t black, white;
 
     XColor palette[4];
     uint8_t windowScalar;
@@ -41,47 +42,50 @@ void close_x();
 void init_palette();
 
 public:
-      XGPU(MMU* m, uint8_t ws);
-      ~XGPU();
+    XGPU();
+    XGPU(MMU* m, uint8_t ws);
+    ~XGPU();
 
-      // Getters
-      /*
-      std::uint8_t GetControl()   { return mmu->Read(0xFF40); }
-      std::uint8_t GetScrollX()   { return mmu->Read(0xFF42); }
-      std::uint8_t GetScrollY()   { return mmu->Read(0xFF43); }
-      std::uint8_t GetScanline()  { return mmu->Read(0xFF44); }
-      */
-      std::uint8_t GetControl();
-      std::uint8_t GetScrollX();
-      std::uint8_t GetScrollY();
-      std::uint8_t GetScanline();
+    // Getters
+    /*
+    std::uint8_t GetControl()   { return mmu->Read(0xFF40); }
+    std::uint8_t GetScrollX()   { return mmu->Read(0xFF42); }
+    std::uint8_t GetScrollY()   { return mmu->Read(0xFF43); }
+    std::uint8_t GetScanline()  { return mmu->Read(0xFF44); }
+    */
+    std::uint8_t GetControl();
+    std::uint8_t GetScrollX();
+    std::uint8_t GetScrollY();
+    std::uint8_t GetScanline();
 
-      //std::uint8_t GetClocks()      { return clocks; }
+    //std::uint8_t GetClocks()      { return clocks; }
 
-      // Setters
-      /*
-      void SetControl(std::uint8_t val)   { mmu->Write(0xFF40, val); }
-      void SetScrollX(std::uint8_t val)   { mmu->Write(0xFF42, val); }
-      void SetScrollY(std::uint8_t val)   { mmu->Write(0xFF43, val); }
-      void SetScanline(std::uint8_t val)  { mmu->Write(0xFF44, val); }
-      */
+    // Setters
+    /*
+    void SetControl(std::uint8_t val)   { mmu->Write(0xFF40, val); }
+    void SetScrollX(std::uint8_t val)   { mmu->Write(0xFF42, val); }
+    void SetScrollY(std::uint8_t val)   { mmu->Write(0xFF43, val); }
+    void SetScanline(std::uint8_t val)  { mmu->Write(0xFF44, val); }
+    */
 
-      void SetControl(std::uint8_t val);
-      void SetScrollX(std::uint8_t val);
-      void SetScrollY(std::uint8_t val);
-      void SetScanline(std::uint8_t val);
-      uint8_t IncrementScanline();
-      void ResetScanline();
+    void SetControl(std::uint8_t val);
+    void SetScrollX(std::uint8_t val);
+    void SetScrollY(std::uint8_t val);
+    void SetScanline(std::uint8_t val);
+    uint8_t IncrementScanline();
+    void ResetScanline();
 
-      void Draw(XColor color, uint8_t y, uint8_t x);
-      void DumpTileset();
-      //void SetClocks(std::uint8_t val)      { clocks = val; }
+    void Draw(uint8_t color, uint8_t y, uint8_t x);
+    void Draw(XColor color, uint8_t y, uint8_t x);
+    void DumpTiles();
+    void DumpTileset();
+    //void SetClocks(std::uint8_t val)      { clocks = val; }
 
-      // Rendering
-      void Step(uint32_t clockStep);
-      void Hblank();
-      void RenderScanline();
-      //void UpdateTile(std::uint16_t addr, std::uint8_t value);
+    // Rendering
+    void Step(uint32_t clockStep);
+    void Hblank();
+    void RenderScanline();
+    //void UpdateTile(std::uint16_t addr, std::uint8_t value);
 
 };
 

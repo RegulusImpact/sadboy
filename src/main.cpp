@@ -46,7 +46,8 @@ int main(int argc, char* argv[]) {
             cpu->CheckRegisters();
             mmu->CheckMemory();
 
-            // gpu->DumpTiles();
+            gpu->DumpTileset();
+            gpu->DumpTiles();
         }
 
         counter++;

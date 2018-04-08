@@ -76,7 +76,7 @@ void XGPU::init_palette() {
     );
 
     for (int ii = 0; ii < 4; ii++) {
-        uint8_t mmuColor = mmu->bgp[ii];
+        uint8_t mmuColor = mmu->palette[ii];
         Status rc;
 
         switch (mmuColor) {
@@ -154,7 +154,7 @@ void XGPU::Step(uint32_t clockStep) {
     clocks += clockStep;
 
     bgmap = ((mmu->Read(0xFF40) >> 3) & 1) == 1;
-    bgtile = ((mmu->Read(0xFF40) >> 4) & 1) == 1;
+    //bgtile = ((mmu->Read(0xFF40) >> 4) & 1) == 1;
 
     switch (mode) {
         case GPU_MODE::OAM: // 2
@@ -171,7 +171,7 @@ void XGPU::Step(uint32_t clockStep) {
                 clocks = 0;
                 mode = GPU_MODE::HBLANK;
 
-                RenderScanline();
+                // RenderScanline();
             }
         }
             break;
@@ -267,7 +267,7 @@ void XGPU::Draw(XColor color, uint8_t y, uint8_t x) {
 }
 
 void XGPU::DumpTiles() {
-    uint16_t tileRow = 0;
+    uint16_t tileRow = 3;
     uint16_t tile = 0;
 
 	for (uint16_t t = 0; t < 32; t++) {
@@ -383,14 +383,14 @@ void XGPU::DumpTileset() {
         // mvprintw(tileRow, 56, "%d", p6);
         // mvprintw(tileRow, 57, "%d", p7);
 
-        Draw(p0, (tileRowOffset*9)+tileRow, (tileCounter*10)+0);
-        Draw(p1, (tileRowOffset*9)+tileRow, (tileCounter*10)+1);
-        Draw(p2, (tileRowOffset*9)+tileRow, (tileCounter*10)+2);
-        Draw(p3, (tileRowOffset*9)+tileRow, (tileCounter*10)+3);
-        Draw(p4, (tileRowOffset*9)+tileRow, (tileCounter*10)+4);
-        Draw(p5, (tileRowOffset*9)+tileRow, (tileCounter*10)+5);
-        Draw(p6, (tileRowOffset*9)+tileRow, (tileCounter*10)+6);
-        Draw(p7, (tileRowOffset*9)+tileRow, (tileCounter*10)+7);
+        Draw(mmu->bgp[p0], (tileRowOffset*9)+tileRow, (tileCounter*10)+0);
+        Draw(mmu->bgp[p1], (tileRowOffset*9)+tileRow, (tileCounter*10)+1);
+        Draw(mmu->bgp[p2], (tileRowOffset*9)+tileRow, (tileCounter*10)+2);
+        Draw(mmu->bgp[p3], (tileRowOffset*9)+tileRow, (tileCounter*10)+3);
+        Draw(mmu->bgp[p4], (tileRowOffset*9)+tileRow, (tileCounter*10)+4);
+        Draw(mmu->bgp[p5], (tileRowOffset*9)+tileRow, (tileCounter*10)+5);
+        Draw(mmu->bgp[p6], (tileRowOffset*9)+tileRow, (tileCounter*10)+6);
+        Draw(mmu->bgp[p7], (tileRowOffset*9)+tileRow, (tileCounter*10)+7);
 
         // we've read two bytes for a row, increment
         tileRow++;

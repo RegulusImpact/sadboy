@@ -1,16 +1,16 @@
-PROG = sadgb
+PROG = sadboy
 CC = g++
 BIN = bin/
 SRC = src/
 INC = include/
 CPPFLAGS = -std=c++11 -g -Wall -I $(INC)
 LDFLAGS =  $(INC)*.cpp #-lncursesw
-FILES = main CPU MMU Cartridge InterruptService
+FILES = main CPU MMU Cartridge InterruptService XGPU
 OBJS = $(addprefix $(BIN), $(FILES:=.o))
 
 
 $(PROG) : $(FILES)
-	$(CC) $(LDFLAGS) -std=c++11 -o $(BIN)$(PROG) $(OBJS)
+	$(CC) $(LDFLAGS) -std=c++11 -o $(BIN)$(PROG) $(OBJS) -lX11
 	make clean
 
 main:
@@ -27,6 +27,9 @@ Cartridge: $(SRC)Cartridge.h
 
 # TextGPU: $(SRC)Graphics/TextGPU.h
 	# $(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -l $(SRC)Graphics/iGPU.h  -l $(SRC)MMU.h
+
+XGPU: $(SRC)Graphics/XGPU.h
+	$(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -l $(SRC)Graphics/iGPU.h -lX11
 
 InterruptService: $(SRC)InterruptService.h
 	$(CC) $(CPPFLAGS) -c $(SRC)$@.cpp -o $(BIN)$@.o

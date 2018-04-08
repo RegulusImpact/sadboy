@@ -1,2 +1,3 @@
 #!/bin/bash
-./bin/sadgb
+DISPLAY=localhost:0; export DISPLAY
+./bin/sadboy

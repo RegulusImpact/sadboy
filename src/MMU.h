@@ -6,10 +6,12 @@
 // size_t
 #include <cstddef>
 
+// utility stuff
 #include <random>
 #include <iostream>
 #include "string.h"
 
+// classes
 #include "Graphics/iGPU.h"
 #include "Cartridge.h"
 #include "Utils.h"
@@ -47,9 +49,6 @@ private:
     const char* nintendoLogo = "CEED6666CC0D000B03730083000C000D0008111F8889000EDCCC6EE6DDDDD999BBBB67636E0EECCCDDDC999FBBB9333E";
 
     const char* emutitle = "42474257454C434F4D45000000000000";
-
-    uint8_t hx = 0;
-    uint8_t hy = 15;
 
     void loadBootrom() {
         uint16_t x = 0x0000;

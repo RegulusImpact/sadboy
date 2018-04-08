@@ -175,8 +175,6 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         char c = Read(0xFF01);
 
         if (c == '\n' || c == '\r') {
-            hy++;
-            hx = 0;
             std::cout << std::endl;
 
             // probably the title when the first newline occurs

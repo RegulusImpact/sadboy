@@ -36,8 +36,9 @@ std::uint8_t MMU::Read(uint16_t addr) {
     else if (addr >= 0xA000 && addr <= 0xBFFF)
         return sram[addr - 0xA000];
     // video ram
-    else if (addr >= 0x8000 && addr <= 0x9FFF)
+    else if (addr >= 0x8000 && addr <= 0x9FFF) {
         return vram[addr - 0x8000];
+    }
 
     // writable ram
     else if (addr >= 0xC000 && addr <= 0xDFFF)
@@ -89,10 +90,10 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         sram[addr - 0xA000] = val;
     // video ram
     else if (addr >= 0x8000 && addr <= 0x9FFF) {
-
         vram[addr - 0x8000] = val;
-        if (addr <= 0x97FF)
+        if (addr <= 0x97FF) {
             UpdateTile(addr, val);
+        }
     }
 
     // writable ram
@@ -169,11 +170,6 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         readBios = false;
     }
 
-    if (addr == 0xFF42) {
-        printf("%d\n",val);
-    }
-
-
     // oh christ what are we doing....
     if (addr == 0xFF02) {// || addr == 0x0081) {
         char c = Read(0xFF01);
@@ -216,15 +212,10 @@ void MMU::UpdateTile(uint16_t address, uint8_t value) {
 		bitIndex = 1 << (7 - x);
 
 		//((unsigned char (*)[8][8])tiles)[tile][y][x] = ((vram[address] & bitIndex) ? 1 : 0) + ((vram[address + 1] & bitIndex) ? 2 : 0);
-		tiles[tile][y][x] = ((vram[address] & bitIndex) ? 1 : 0) + ((vram[address + 1] & bitIndex) ? 2 : 0);
+		tiles[tile][y][x] = ((vram[address] & bitIndex)     != 0 ? 1 : 0) +
+                            ((vram[address + 1] & bitIndex) != 0 ? 2 : 0);
 	}
-
-	#ifdef DS
-		dirtyTileset = 1;
-	#endif
 }
-
-
 
 void MMU::CheckMemory() {
     if (Read(0xFF05) != 0x00) { std::cout << "failed on FF0F" << std::endl; exit(1); } // TIMA

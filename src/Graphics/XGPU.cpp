@@ -180,8 +180,9 @@ void XGPU::Step(uint32_t clockStep) {
                 clocks = 0;
                 uint8_t scanline = IncrementScanline();
 
-                if (scanline > 143) {
+                if (scanline == 143) {
                     mode = GPU_MODE::VBLANK;
+                    RenderFrame();
                 } else {
                     mode = GPU_MODE::OAM;
                 }
@@ -198,7 +199,7 @@ void XGPU::Step(uint32_t clockStep) {
                 if (scanline > 153) {
                     mode = GPU_MODE::OAM;
                     ResetScanline();
-                    XFlush(display);
+                    //XFlush(display);
                 }
             }
         }
@@ -217,37 +218,52 @@ void XGPU::RenderScanline() {
     uint8_t scy = GetScrollY();
     uint8_t scx = GetScrollX();
     uint8_t line = GetScanline();
+    uint8_t bgmap = control & GPU_CONTROL_TILEMAP;
+    uint8_t bgtile = control & GPU_CONTROL_TILESET;
 
     // which line of tiles to use in which map
-    uint16_t bgmapOffset = (control & GPU_CONTROL_TILEMAP) > 0 ? 0x1C00 : 0x1800;
-    bgmapOffset += ((line + scy)) >> 3;
+    uint16_t bgmapOffset = bgmap > 0 ? 0x1C00 : 0x1800;
+    bgmapOffset += (((line + scy) & 0xFF) >> 3) << 5;
+    bgmapOffset += 0x8000;
 
     // which tile
-    uint8_t lineOffset = scx >> 3;
+    uint8_t lineOffset = (scx >> 3);
 
     // which line of pixels in the tile
     uint8_t y = (line + scy) & 7;
 
     // which in the tileline to start
-    uint8_t x = scx & 7;
+    uint8_t x = (scx & 7);
 
     // where to render on canvas
     uint8_t color;
-    uint8_t tile = mmu->Read(bgmapOffset + lineOffset);
+    uint8_t tile = mmu->Read((bgmapOffset + lineOffset));
+    size_t offset = MAX_X * line;
 
     // if (bgtile && tile < 128) tile += 256;
 
     for (int ii = 0; ii < MAX_X; ii++) {
-        color = mmu->bgp[mmu->tiles[tile][y][x]];
-
-        Draw(color, line, ii);
+        color = mmu->tiles[tile][y][x];
+        // color = mmu->bgp[color];
+        framebuffer[offset] = mmu->bgp[color];
+        offset++;
 
         x++;
         if (x == 8) {
             x = 0;
             lineOffset = (lineOffset + 1) & 31;
-            tile = mmu->Read(bgmapOffset + lineOffset);
+            tile = mmu->Read((bgmapOffset + lineOffset));
             // if (bgtile && tile < 128) tile += 256;
+        }
+    }
+}
+
+void XGPU::RenderFrame() {
+    for (int y = 0; y < MAX_Y; y++) {
+        for (int x = 0; x < MAX_X; x++) {
+            size_t offset = (MAX_X * y) + x;
+            uint8_t color = framebuffer[offset];
+            Draw(color, y, x);
         }
     }
 }

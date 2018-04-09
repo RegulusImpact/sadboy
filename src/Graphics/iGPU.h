@@ -33,6 +33,7 @@ protected:
 
     GPU_MODE mode = GPU_MODE::OAM;
     std::uint32_t clocks;
+    uint8_t framebuffer[(MAX_X*MAX_Y)];
 
 public:
     iGPU(){}
@@ -70,6 +71,7 @@ public:
     virtual uint8_t IncrementScanline()=0;
     virtual void ResetScanline()=0;
 
+    virtual void RenderFrame()=0;
     virtual void Draw(uint8_t color, uint8_t y, uint8_t x)=0;
     virtual void DumpTileset()=0;
     virtual void DumpTiles()=0;

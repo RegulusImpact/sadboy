@@ -67,6 +67,7 @@ public:
     uint8_t IncrementScanline();
     void ResetScanline();
 
+    void RenderFrame();
     void Draw(uint8_t color, uint8_t y, uint8_t x);
     void Draw(XColor color, uint8_t y, uint8_t x);
     void DumpTiles();

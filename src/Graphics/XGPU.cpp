@@ -125,34 +125,78 @@ XGPU::~XGPU() {
     delete mmu;
 }
 // Getters
-std::uint8_t XGPU::GetControl()   { return mmu->Read(0xFF40); }
-std::uint8_t XGPU::GetLCDStat()   { return mmu->Read(0xFF41); }
-std::uint8_t XGPU::GetScrollY()   { return mmu->Read(0xFF42); }
-std::uint8_t XGPU::GetScrollX()   { return mmu->Read(0xFF43); }
-std::uint8_t XGPU::GetScanline()  { return mmu->Read(0xFF44); }
+uint8_t XGPU::GetControl()   { return mmu->Read(CONTROL_ADDRESS); }
+uint8_t XGPU::GetLCDStat()   { return mmu->Read(STATUS_ADDRESS); }
+uint8_t XGPU::GetScrollY()   { return mmu->Read(SCROLLY_ADDRESS); }
+uint8_t XGPU::GetScrollX()   { return mmu->Read(SCROLLX_ADDRESS); }
+uint8_t XGPU::GetScanline()  { return mmu->Read(SCANLINE_ADDRESS); }
+uint8_t XGPU::GetLYC()       { return mmu->Read(LYC_ADDRESS); }
 
 // Setters
-void XGPU::SetControl(std::uint8_t val)   { mmu->Write(0xFF40, val); }
-void XGPU::SetLCDStat(std::uint8_t val)   { mmu->Write(0xFF41, val); }
-void XGPU::SetScrollY(std::uint8_t val)   { mmu->Write(0xFF42, val); }
-void XGPU::SetScrollX(std::uint8_t val)   { mmu->Write(0xFF43, val); }
-void XGPU::SetScanline(std::uint8_t val)  { mmu->Write(0xFF44, val); }
+void XGPU::SetControl(uint8_t val)   { mmu->Write(CONTROL_ADDRESS, val); }
+void XGPU::SetLCDStat(uint8_t val)   { mmu->Write(STATUS_ADDRESS, val); }
+void XGPU::SetScrollY(uint8_t val)   { mmu->Write(SCROLLY_ADDRESS, val); }
+void XGPU::SetScrollX(uint8_t val)   { mmu->Write(SCROLLX_ADDRESS, val); }
+void XGPU::SetScanline(uint8_t val)  { mmu->Write(SCANLINE_ADDRESS, val); }
+void XGPU::SetLYC(uint8_t val)       { mmu->Write(LYC_ADDRESS, val); }
 
+// Special Getters
+void XGPU::Sync() {
+    // control
+    control = GetControl();
+        lcdOperation = (control & BIT_7) != 0;
+        windowTilemap = (control & BIT_6) != 0;
+        windowDisplay = (control & BIT_5) != 0;
+        bgTile = (control & BIT_4) != 0;
+        bgMap = (control & BIT_3) != 0;
+        spriteSize = (control & BIT_2) != 0;
+        spriteDisplay = (control & BIT_1) != 0;
+        bgDisplay = (control & BIT_0) != 0;
+
+    // lcdc stats
+    lcdStat = GetLCDStat();
+        useLYC = (lcdStat & BIT_6) != 0;
+        coincidence = (lcdStat & BIT_2) != 0;
+        // bit 1 - 0 -mode flag
+        mode = (GPU_MODE)(lcdStat & (BIT_1 | BIT_0));
+
+    // scroll y
+    scrollY = GetScrollY();
+
+    // scroll X
+    scrollX = GetScrollX();
+
+    // LY (scanline)
+    scanline = GetScanline();
+
+    // LYC
+    lyc = GetLYC();
+}
+// Special Setters
+void XGPU::SyncMemory() {
+    // lcdc stats
+    // clear bits; conditionally clear the coincidence
+    lcdStat = lcdStat & ~(BIT_1 | BIT_0) & ~(useLYC ? BIT_2 : 0x00);
+    lcdStat |= mode;
+    lcdStat |= (scanline == lyc) ? BIT_2 : 0x00;
+    SetLCDStat(lcdStat);
+
+    // LY (scanline)
+    SetScanline(scanline);
+}
 
 //Scanline functions
-uint8_t XGPU::IncrementScanline() {
-    uint8_t scanline = mmu->Read(0xFF44);
+void XGPU::IncrementScanline() {
     scanline++;
-    mmu->Write(0xFF44, scanline);
-    return scanline;
 }
 
 void XGPU::ResetScanline() {
-    mmu->Write(0xFF44, (uint8_t)0x00);
+    scanline = 0;
 }
 
 // Rendering
 void XGPU::Step(uint32_t clockStep) {
+    Sync();
     clocks += clockStep;
 
     switch (mode) {
@@ -178,7 +222,7 @@ void XGPU::Step(uint32_t clockStep) {
         {
             if (clocks >= 204) {
                 clocks = 0;
-                uint8_t scanline = IncrementScanline();
+                IncrementScanline();
 
                 if (scanline == 143) {
                     mode = GPU_MODE::VBLANK;
@@ -194,7 +238,7 @@ void XGPU::Step(uint32_t clockStep) {
             if (clocks >= 456) {
                 clocks = 0;
 
-                uint8_t scanline = IncrementScanline();
+                IncrementScanline();
 
                 if (scanline > 153) {
                     mode = GPU_MODE::OAM;
@@ -206,41 +250,32 @@ void XGPU::Step(uint32_t clockStep) {
             break;
     }
 
-    uint8_t lcdStat = GetLCDStat();
-    lcdStat = (lcdStat & 0b11111100) | mode;
-    SetLCDStat(lcdStat);
+    SyncMemory();
 }
 
 void XGPU::Hblank() {}
-void XGPU::RenderScanline() {
-    // fetch gpu registers
-    uint8_t control = GetControl();
-    uint8_t scy = GetScrollY();
-    uint8_t scx = GetScrollX();
-    uint8_t line = GetScanline();
-    uint8_t bgmap = control & GPU_CONTROL_TILEMAP;
-    uint8_t bgtile = control & GPU_CONTROL_TILESET;
 
+void XGPU::RenderScanline() {
     // which line of tiles to use in which map
-    uint16_t bgmapOffset = bgmap > 0 ? 0x1C00 : 0x1800;
-    bgmapOffset += (((line + scy) & 0xFF) >> 3) << 5;
+    uint16_t bgmapOffset = bgMap ? 0x1C00 : 0x1800;
+    bgmapOffset += (((scanline + scrollY) & 0xFF) >> 3) << 5;
     bgmapOffset += 0x8000;
 
     // which tile
-    uint8_t lineOffset = (scx >> 3);
+    uint8_t lineOffset = (scrollX >> 3);
 
     // which line of pixels in the tile
-    uint8_t y = (line + scy) & 7;
+    uint8_t y = (scanline + scrollY) & 7;
 
     // which in the tileline to start
-    uint8_t x = (scx & 7);
+    uint8_t x = (scrollX & 7);
 
     // where to render on canvas
     uint8_t color;
     uint8_t tile = mmu->Read((bgmapOffset + lineOffset));
-    size_t offset = MAX_X * line;
+    size_t offset = MAX_X * scanline;
 
-    // if (bgtile && tile < 128) tile += 256;
+    // if (bgTile && tile < 128) tile += 256;
 
     for (int ii = 0; ii < MAX_X; ii++) {
         color = mmu->tiles[tile][y][x];
@@ -253,7 +288,7 @@ void XGPU::RenderScanline() {
             x = 0;
             lineOffset = (lineOffset + 1) & 31;
             tile = mmu->Read((bgmapOffset + lineOffset));
-            // if (bgtile && tile < 128) tile += 256;
+            // if (bgTile && tile < 128) tile += 256;
         }
     }
 }

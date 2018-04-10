@@ -1,20 +1,6 @@
 #ifndef iGPU_H
 #define iGPU_H
 
-#define MAX_Y 144
-#define MAX_X 160
-
-// macros from cinoop gpu.h
-// i don't even know if "macros" is the right term for these
-#define GPU_CONTROL_BGENABLE (1 << 0)
-#define GPU_CONTROL_SPRITEENABLE (1 << 1)
-#define GPU_CONTROL_SPRITEVDOUBLE (1 << 2)
-#define GPU_CONTROL_TILEMAP (1 << 3)
-#define GPU_CONTROL_TILESET (1 << 4)
-#define GPU_CONTROL_WINDOWENABLE (1 << 5)
-#define GPU_CONTROL_WINDOWTILEMAP (1 << 6)
-#define GPU_CONTROL_DISPLAYENABLE (1 << 7)
-
 // uintX_t
 #include <cstdint>
 // size_t
@@ -24,6 +10,18 @@
 
 class iGPU {
 protected:
+    // internal reference variables
+    static const uint8_t MAX_Y = 144;
+    static const uint8_t MAX_X = 160;
+    static const uint8_t BIT_0 = (1 << 0);
+    static const uint8_t BIT_1 = (1 << 1);
+    static const uint8_t BIT_2 = (1 << 2);
+    static const uint8_t BIT_3 = (1 << 3);
+    static const uint8_t BIT_4 = (1 << 4);
+    static const uint8_t BIT_5 = (1 << 5);
+    static const uint8_t BIT_6 = (1 << 6);
+    static const uint8_t BIT_7 = (1 << 7);
+
     enum GPU_MODE {
         OAM = 0b10,
         VRAM = 0b11,
@@ -31,9 +29,79 @@ protected:
         VBLANK = 0b01
     };
 
-    GPU_MODE mode = GPU_MODE::OAM;
-    std::uint32_t clocks;
+    // internal variables
+    uint32_t clocks;
     uint8_t framebuffer[(MAX_X*MAX_Y)];
+
+    // local variables used to sync to and from memory
+    // control
+    static const uint16_t CONTROL_ADDRESS = 0xFF40;
+    uint8_t control;
+    // control - breakdown bits
+    // bit 7 - lcd control operation
+        // 0: stop completely (no picture)
+        // 1: operation
+        bool lcdOperation;
+    // bit 6 - window tilemap display select
+        // 0: 9800-9bff
+        // 1: 9c00-9fff
+        bool windowTilemap;
+    // bit 5 - window display
+        // 0: off
+        // 1: on
+        bool windowDisplay;
+    // bit 4 - bg + window tile data select
+        // 0: 8800-97ff
+        // 1: 8000-9fff
+        bool bgTile;
+    // bit 3 - bg tilemap displayselect
+        // 0: 9800-9bff
+        // 1: 9c00-9fff
+        bool bgMap;
+    // bit 2 - obj (sprite) size -- width x height
+        // 0: 8x8
+        // 1: 8x16
+        bool spriteSize;
+    // bit 1 - obj (sprite) display
+        // 0: off
+        // 1: on
+        bool spriteDisplay;
+    // bit 0 bg + window display
+        // 0: off
+        // 1: on
+        bool bgDisplay;
+
+    // lcdc status
+    static const uint16_t STATUS_ADDRESS = 0xFF41;
+    uint8_t lcdStat;
+    // bit 7 - unused
+    // bit 6 - selectable lyc == ly
+    bool useLYC;
+    // bit 5 - mode 10 interrupt
+    // bit 4 - mode 01 interrupt
+    // bit 3 - mode 00 interrupt
+        // 0: lyc != ly
+        // 1: lyc == ly
+    // bit 2 -lyc == ly coincidence
+    bool coincidence;
+    // bit 1 - 0 -mode flag
+    GPU_MODE mode;
+
+    // scroll y
+    static const uint16_t SCROLLY_ADDRESS = 0xFF42;
+    uint8_t scrollY;
+
+    // scroll x
+    static const uint16_t SCROLLX_ADDRESS = 0xFF43;
+    uint8_t scrollX;
+
+    // LY (scanline)
+    static const uint16_t SCANLINE_ADDRESS = 0xFF44;
+    uint8_t scanline;
+
+    // LYC (ly compare)
+    static const uint16_t LYC_ADDRESS = 0xFF45;
+    uint8_t lyc;
 
 public:
     iGPU(){}
@@ -51,6 +119,7 @@ public:
     virtual std::uint8_t GetScrollX()=0;
     virtual std::uint8_t GetScrollY()=0;
     virtual std::uint8_t GetScanline()=0;
+    virtual std::uint8_t GetLYC()=0;
 
     //std::uint8_t GetClocks()      { return clocks; }
 
@@ -68,9 +137,9 @@ public:
     virtual void SetScrollX(std::uint8_t val)=0;
     virtual void SetScrollY(std::uint8_t val)=0;
     virtual void SetScanline(std::uint8_t val)=0;
-    virtual uint8_t IncrementScanline()=0;
-    virtual void ResetScanline()=0;
+    virtual void SetLYC(std::uint8_t val)=0;
 
+    // drawing
     virtual void RenderFrame()=0;
     virtual void Draw(uint8_t color, uint8_t y, uint8_t x)=0;
     virtual void DumpTileset()=0;

@@ -24,7 +24,7 @@
 class XGPU: public iGPU {
 
 private:
-
+    // implementation specific
     Display* display;
     int screen;
     Window window;
@@ -35,6 +35,7 @@ private:
     XColor palette[4];
     uint8_t windowScalar;
 
+    // functionality dependent
     MMU* mmu;
 
 void init_x();
@@ -47,38 +48,39 @@ public:
     ~XGPU();
 
     // Getters
-
     std::uint8_t GetControl();
     std::uint8_t GetLCDStat();
     std::uint8_t GetScrollY();
     std::uint8_t GetScrollX();
     std::uint8_t GetScanline();
-
-    //std::uint8_t GetClocks()      { return clocks; }
+    std::uint8_t GetLYC();
 
     // Setters
-
-
     void SetControl(std::uint8_t val);
     void SetLCDStat(std::uint8_t val);
     void SetScrollY(std::uint8_t val);
     void SetScrollX(std::uint8_t val);
     void SetScanline(std::uint8_t val);
-    uint8_t IncrementScanline();
+    void SetLYC(std::uint8_t val);
+
+    void IncrementScanline();
     void ResetScanline();
+
+    // Special Getters - pull values from memory at the startup / start step
+    void Sync();
+    // Special Setters - set values back into memory at end step
+    void SyncMemory();
+
+    // Rendering
+    void Step(uint32_t clockStep);
+    void Hblank();
+    void RenderScanline();
 
     void RenderFrame();
     void Draw(uint8_t color, uint8_t y, uint8_t x);
     void Draw(XColor color, uint8_t y, uint8_t x);
     void DumpTiles();
     void DumpTileset();
-    //void SetClocks(std::uint8_t val)      { clocks = val; }
-
-    // Rendering
-    void Step(uint32_t clockStep);
-    void Hblank();
-    void RenderScanline();
-    //void UpdateTile(std::uint16_t addr, std::uint8_t value);
 
 };
 

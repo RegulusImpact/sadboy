@@ -675,7 +675,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0xCE: // adc a, (nn)
         {
             bool carry = GetCY();
-            
+
             uint16_t val = ReadPC();
             uint16_t a = Get(REGISTERS::A);
             uint16_t tot = a + val + (carry ? 1 : 0);
@@ -690,12 +690,9 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         }
             break;
         case 0x90: case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x97: // sub a, reg
-        case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9F: // sbc a, reg
         {
-            bool carry = GetCY() && ((opcode & 8) != 0);
-
             REGISTERS r = (REGISTERS)(opcode & 7);
-            uint8_t val = Get(r) + (carry ? 1 : 0);
+            uint8_t val = Get(r);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
@@ -708,12 +705,27 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             cycles = 4;
         }
             break;
-        case 0x96: // sub a, (hl)
-        case 0x9E: // sbc a, (hl)
+        case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9F: // sbc a, reg
         {
-            bool carry = GetCY() && ((opcode & 8) != 0);
+            bool carry = GetCY();
 
-            uint8_t val = Get(FULL_REGISTERS::HL) + (carry ? 1 : 0);
+            REGISTERS r = (REGISTERS)(opcode & 7);
+            uint16_t val = Get(r) + (carry ? 1 : 0);
+            uint16_t a = Get(REGISTERS::A);
+            uint16_t tot = a - val;
+            Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
+
+            SetZ(0 == tot);
+            SetN(true);
+            SetCY(IS_FULL_BORROW(a, val));
+            SetH(IS_HALF_BORROW(a, val));
+
+            cycles = 4;
+        }
+            break;
+        case 0x96: // sub a, (hl)
+        {
+            uint8_t val = Get(FULL_REGISTERS::HL);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
@@ -722,18 +734,50 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
+
+            cycles = 8;
+        }
+            break;
+        case 0x9E: // sbc a, (hl)
+        {
+            bool carry = GetCY();
+
+            uint16_t val = Get(FULL_REGISTERS::HL) + (carry ? 1 : 0);
+            uint16_t a = Get(REGISTERS::A);
+            uint16_t tot = a - val;
+            Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
+
+            SetZ(0 == tot);
+            SetN(true);
+            SetCY(IS_FULL_BORROW(a, val));
+            SetH(IS_HALF_BORROW(a, val));
+
             cycles = 8;
         }
             break;
         case 0xD6: // sub a, (nn)
-        case 0xDE: // sbc a, (nn) ; documentation labels the opcode as ???
         {
-            bool carry = GetCY() && ((opcode & 8) != 0);
-
-            uint8_t val = ReadPC() + (carry ? 1 : 0);
+            uint8_t val = ReadPC();
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
+
+            SetZ(0 == tot);
+            SetN(true);
+            SetCY(IS_FULL_BORROW(a, val));
+            SetH(IS_HALF_BORROW(a, val));
+
+            cycles = 8;
+        }
+            break;
+        case 0xDE: // sbc a, (nn) ; documentation labels the opcode as ???
+        {
+            bool carry = GetCY();
+
+            uint16_t val = ReadPC() + (carry ? 1 : 0);
+            uint16_t a = Get(REGISTERS::A);
+            uint16_t tot = a - val;
+            Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
             SetZ(0 == tot);
             SetN(true);

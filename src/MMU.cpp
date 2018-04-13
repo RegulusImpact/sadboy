@@ -15,6 +15,8 @@ MMU::MMU(Cartridge* crt) {
     readBios = true;
     enableDebugger = false;
 
+    Write(0xFF41, (uint8_t)3);
+
     loadBootrom();
 }
 
@@ -182,6 +184,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         } else if (c >= 0x20 && c <= 0xFE) {
             //c[0] = Read(0xFF01);
             std::cout << c;
+            // if (c == 'd') exit(1);
         }
     }
 }

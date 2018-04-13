@@ -244,7 +244,7 @@ std::uint16_t CPU::ReadPC16() {
 uint8_t CPU::PopSP() {
     uint16_t addr = stackPointer++;
     uint8_t n = mmu->Read(addr);
-    mmu->Write(addr, (uint8_t)0x00);
+    //mmu->Write(addr, (uint8_t)0x00);
     return n;
 }
 
@@ -252,17 +252,17 @@ uint16_t CPU::PopSP16() {
     uint16_t addr = stackPointer++;
     stackPointer++;
     uint16_t n = mmu->Read16Bit(addr);
-    mmu->Write(addr, (uint16_t)0x00);
+    //mmu->Write(addr, (uint16_t)0x00);
     return n;
 }
 
 void CPU::PushSP(uint8_t value) {
-    uint16_t addr = stackPointer--;
+    uint16_t addr = --stackPointer;
     mmu->Write(addr, value);
 }
 
 void CPU::PushSP(uint16_t value) {
-    stackPointer--;
+    --stackPointer;
     uint16_t addr = stackPointer--;
     mmu->Write(addr, value);
 }
@@ -588,12 +588,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         /* 8 BIT ALU */
 
         case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x87: // add a,reg
-        case 0x88: case 0x89: case 0x8a: case 0x8b: case 0x8c: case 0x8d: case 0x8f: // adc a,reg
         {
-            bool carry = GetCY() && ((opcode & 8) != 0);
 
             REGISTERS r = (REGISTERS)(opcode & 7);
-            uint8_t val = Get(r) + (carry ? 1 : 0);
+            uint8_t val = Get(r);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a + val;
             Set(REGISTERS::A, tot);
@@ -602,6 +600,24 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             SetN(false);
             SetCY(IS_FULL_CARRY(a, val));
             SetH(IS_HALF_CARRY(a, val));
+
+            cycles = 4;
+        }
+            break;
+        case 0x88: case 0x89: case 0x8a: case 0x8b: case 0x8c: case 0x8d: case 0x8f: // adc a,reg
+        {
+            bool carry = GetCY();
+
+            REGISTERS r = (REGISTERS)(opcode & 7);
+            uint8_t val = Get(r);
+            uint8_t a = Get(REGISTERS::A);
+            uint8_t tot = a + val + (carry ? 1 : 0);
+            Set(REGISTERS::A, tot);
+
+            SetZ(0 == tot);
+            SetN(false);
+            SetCY(((a ^ val ^ tot) & 0x100) != 0x00);
+            SetH(((a ^ val ^ tot) & 0x10) != 0x00);
 
             cycles = 4;
         }
@@ -678,7 +694,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         }
             break;
         case 0xD6: // sub a, (nn)
-        // case 0xDE: // sbc a, (nn) ; documentation labels the opcode as ???
+        case 0xDE: // sbc a, (nn) ; documentation labels the opcode as ???
         {
             bool carry = GetCY() && ((opcode & 8) != 0);
 
@@ -810,7 +826,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t val = mmu->Read(addr);
-
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a ^ val;
             Set(REGISTERS::A, result);
@@ -826,15 +841,16 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0xEE: // xor a, (nn)
         {
             uint8_t val = ReadPC();
-
             uint8_t a = Get(REGISTERS::A);
             uint8_t result = a ^ val;
             Set(REGISTERS::A, result);
+            // fprintf(stderr, "PC: 0x%.4X    A: 0x%.2X    OPERAND: %d d    RESULT: 0x%.2X    F: 0x%.2X\n",programCounter,a,val,result,Get(REGISTERS::F));
 
-            SetZ(0 == Get(REGISTERS::A));
+            SetZ(0 == result);
             SetN(false);
             SetCY(false);
             SetH(false);
+
 
             cycles = 8;
         }
@@ -964,7 +980,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             SetN(false);
             SetCY(IS_FULL_CARRY16(hl, src));
-            SetH(IS_FULL_CARRY16(hl, src));
+            SetH(IS_HALF_CARRY16(hl, src));
 
             cycles = 8;
         }
@@ -978,7 +994,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             SetN(false);
             SetCY(IS_FULL_CARRY16(hl, src));
-            SetH(IS_FULL_CARRY16(hl, src));
+            SetH(IS_HALF_CARRY16(hl, src));
 
             cycles = 8;
         }
@@ -992,7 +1008,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             SetZ(false);
             SetN(false);
             SetCY(IS_FULL_CARRY16(sp, n));
-            SetH(IS_FULL_CARRY16(sp, n));
+            SetH(IS_HALF_CARRY16(sp, n));
 
             cycles = 16;
         }
@@ -1105,19 +1121,19 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             break;
         case 0x00: // NOP
         {
-            std::cout << "NOP" << std::endl;
+            // std::cout << "NOP" << std::endl;
             cycles = 4;
         }
             break;
         case 0x76: // HALT
         {
-            std::cout << "HALT" << std::endl;
+            // std::cout << "HALT" << std::endl;
             cycles = 4;
         }
             break;
         case 0x10: // STOP
         {
-            std::cout << "STOP" << std::endl;
+            // std::cout << "STOP" << std::endl;
             cycles = 4;
         }
             break;
@@ -1475,7 +1491,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             break;
         default:
         {
-            fprintf(stderr,"====WARNING: OPCODE: 0x%.2X does not exist. ====", opcode);
+            fprintf(stderr,"==== WARNING: OPCODE: 0x%.2X does not exist on line %.4X. ====\n", opcode, programCounter);
         }
             break;
     }
@@ -1781,13 +1797,13 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: // bit 7, reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            uint8_t bit = (opcode ^ 0x40) >> 3;
+            uint8_t bit = (opcode - 0x40) >> 3;
             uint8_t b = 1 << bit;
 
             uint8_t reg = Get(r);
             uint8_t result = reg & b;
 
-            SetZ(b != result);
+            SetZ(0 == result);
 
             SetN(false);
             SetH(true);
@@ -1806,11 +1822,13 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0x7E: // bit 7, (hl)
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            uint8_t bit = (opcode ^ 0x40) >> 3;
-            uint8_t b = 1 << bit;
+            uint8_t bit = (opcode - 0x46) >> 3;
+            uint8_t b = (1 << bit);
             uint8_t mem = mmu->Read(addr);
 
-            SetZ(!(mem & b));
+            uint8_t result = mem & b;
+
+            SetZ(result == 0);
 
             SetN(false);
             SetH(true);
@@ -1830,7 +1848,7 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xF8: case 0xF9: case 0xFA: case 0xFB: case 0xFC: case 0xFD: case 0xFF: // SET 7, reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            uint8_t bit = (opcode - 0xC0) / 8;
+            uint8_t bit = (opcode - 0xC0)  >> 3;
             uint8_t b = 1 << bit;
 
             uint8_t val = Get(r);
@@ -1850,15 +1868,13 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xFE: // SET 7, (hl)
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            uint8_t bit = (opcode - 0xC0) / 8;
+            uint8_t bit = (opcode - 0xC6)  >> 3;
             uint8_t b = 1 << bit;
 
             uint8_t mem = mmu->Read(addr);
-            mem = mem | b;
-            mmu->Write(addr, mem);
+            uint8_t result = mem | b;
 
-            SetN(false);
-            SetH(true);
+            mmu->Write(addr, result);
 
             cycles = 16;
         }
@@ -1875,13 +1891,14 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF: // RES 7, reg
         {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
-            uint8_t bit = (opcode - 0x80) / 8;
+            uint8_t bit = (opcode - 0x80)  >> 3;
             uint8_t b = 1 << bit;
             b = ~b;
 
             uint8_t val = Get(r);
-            val = val & b;
-            Set(r, val);
+            uint8_t result = (val & b);
+            // fprintf(stderr, "OP: 0xCB%.2X   preval: %d   postval: %d   F: 0x%.2X\n", opcode, val,result,Get(REGISTERS::F));
+            Set(r, result);
 
             cycles = 8;
         }
@@ -1896,23 +1913,20 @@ void CPU::CheckExtension(uint8_t opcode) {
         case 0xBE: // RES 7, (hl)
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            uint8_t bit = (opcode ^ 0x80) >> 3;
+            uint8_t bit = (opcode - 0x86) >> 3;
             uint8_t b = 1 << bit;
             b = ~b;
 
             uint8_t mem = mmu->Read(addr);
-            mem = mem & b;
-            mmu->Write(addr, mem);
-
-            SetN(false);
-            SetH(true);
+            uint8_t result = mem & b;
+            mmu->Write(addr, result);
 
             cycles = 16;
         }
             break;
         default:
         {
-            fprintf(stderr,"====WARNING: OPCODE: 0xCB%.2X does not exist. ====", opcode);
+            fprintf(stderr,"==== WARNING: OPCODE: 0xCB%.2X does not exist on line %.4X. ====\n", opcode, programCounter);
         }
             break;
     }

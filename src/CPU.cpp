@@ -615,10 +615,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(false);
-            SetCY(((a ^ val ^ tot) & 0x100) != 0x00);
-            SetH(((a ^ val ^ tot) & 0x10) != 0x00);
+            SetCY(((a ^ val ^ tot) & 0x100));
+            SetH(((a ^ val ^ tot) & 0x10));
 
             cycles = 4;
         }
@@ -649,10 +649,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t tot = a + val + (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(false);
-            SetCY(((a ^ val ^ tot) & 0x100) != 0x00);
-            SetH(((a ^ val ^ tot) & 0x10) != 0x00);
+            SetCY(((a ^ val ^ tot) & 0x100));
+            SetH(((a ^ val ^ tot) & 0x10));
 
             cycles = 8;
         }
@@ -681,10 +681,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t tot = a + val + (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(false);
-            SetCY(((a ^ val ^ tot) & 0x100) != 0x00);
-            SetH(((a ^ val ^ tot) & 0x10) != 0x00);
+            SetCY(((a ^ val ^ tot) & 0x100));
+            SetH(((a ^ val ^ tot) & 0x10));
 
             cycles = 8;
         }
@@ -710,12 +710,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             bool carry = GetCY();
 
             REGISTERS r = (REGISTERS)(opcode & 7);
-            uint16_t val = Get(r) + (carry ? 1 : 0);
+            uint16_t val = Get(r);
             uint16_t a = Get(REGISTERS::A);
-            uint16_t tot = a - val;
+            uint16_t tot = a - val - (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
@@ -742,12 +742,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             bool carry = GetCY();
 
-            uint16_t val = Get(FULL_REGISTERS::HL) + (carry ? 1 : 0);
+            uint16_t val = Get(FULL_REGISTERS::HL);
             uint16_t a = Get(REGISTERS::A);
-            uint16_t tot = a - val;
+            uint16_t tot = a - val - (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
@@ -774,12 +774,13 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             bool carry = GetCY();
 
-            uint16_t val = ReadPC() + (carry ? 1 : 0);
+            uint16_t val = ReadPC();
             uint16_t a = Get(REGISTERS::A);
-            uint16_t tot = a - val;
+            uint16_t tot = a - val - (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-            SetZ(0 == tot);
+
+            SetZ(0 == (tot & 0xFF));
             SetN(true);
             SetCY(IS_FULL_BORROW(a, val));
             SetH(IS_HALF_BORROW(a, val));
@@ -1083,8 +1084,8 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             SetZ(false);
             SetN(false);
-            SetCY(IS_FULL_CARRY16(sp, n));
-            SetH(IS_HALF_CARRY16(sp, n));
+            SetCY(IS_FULL_CARRY(sp, n));
+            SetH(IS_HALF_CARRY(sp, n));
 
             cycles = 16;
         }

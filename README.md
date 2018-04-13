@@ -34,6 +34,7 @@ EE 66 EE BB 66 BB 66
 Failed
 ```
 
+# References:
 
-Git Submodule Reference:
+## Git Submodule Reference:
 https://git-scm.com/book/en/v2/Git-Tools-Submodules

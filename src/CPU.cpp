@@ -590,7 +590,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
         case 0x80: case 0x81: case 0x82: case 0x83: case 0x84: case 0x85: case 0x87: // add a,reg
         {
-
             REGISTERS r = (REGISTERS)(opcode & 7);
             uint8_t val = Get(r);
             uint8_t a = Get(REGISTERS::A);
@@ -610,10 +609,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             bool carry = GetCY();
 
             REGISTERS r = (REGISTERS)(opcode & 7);
-            uint8_t val = Get(r);
-            uint8_t a = Get(REGISTERS::A);
-            uint8_t tot = a + val + (carry ? 1 : 0);
-            Set(REGISTERS::A, tot);
+            uint16_t val = Get(r);
+            uint16_t a = Get(REGISTERS::A);
+            uint16_t tot = a + val + (carry ? 1 : 0);
+
+            Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
             SetZ(0 == tot);
             SetN(false);
@@ -624,11 +624,9 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         }
             break;
         case 0x86: // add a, (hl)
-        case 0x8E: // adc a, (hl)
         {
-            bool carry = GetCY() && ((opcode & 8) != 0);
             uint16_t addr = Get(FULL_REGISTERS::HL);
-            uint8_t val = mmu->Read(addr) + (carry ? 1 : 0);
+            uint8_t val = mmu->Read(addr);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a + val;
             Set(REGISTERS::A, tot);
@@ -641,11 +639,27 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             cycles = 8;
         }
             break;
-        case 0xC6: // add a, (nn)
-        case 0xCE: // adc a, (nn)
+        case 0x8E: // adc a, (hl)
         {
-            bool carry = GetCY() && ((opcode & 8) != 0);
-            uint8_t val = ReadPC() + (carry ? 1 : 0);
+            bool carry = GetCY();
+
+            uint16_t addr = Get(FULL_REGISTERS::HL);
+            uint16_t val = mmu->Read(addr);
+            uint16_t a = Get(REGISTERS::A);
+            uint16_t tot = a + val + (carry ? 1 : 0);
+            Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
+
+            SetZ(0 == tot);
+            SetN(false);
+            SetCY(((a ^ val ^ tot) & 0x100) != 0x00);
+            SetH(((a ^ val ^ tot) & 0x10) != 0x00);
+
+            cycles = 8;
+        }
+            break;
+        case 0xC6: // add a, (nn)
+        {
+            uint8_t val = ReadPC();
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a + val;
             Set(REGISTERS::A, tot);
@@ -654,6 +668,23 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             SetN(false);
             SetCY(IS_FULL_CARRY(a, val));
             SetH(IS_HALF_CARRY(a, val));
+
+            cycles = 8;
+        }
+            break;
+        case 0xCE: // adc a, (nn)
+        {
+            bool carry = GetCY();
+            
+            uint16_t val = ReadPC();
+            uint16_t a = Get(REGISTERS::A);
+            uint16_t tot = a + val + (carry ? 1 : 0);
+            Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
+
+            SetZ(0 == tot);
+            SetN(false);
+            SetCY(((a ^ val ^ tot) & 0x100) != 0x00);
+            SetH(((a ^ val ^ tot) & 0x10) != 0x00);
 
             cycles = 8;
         }

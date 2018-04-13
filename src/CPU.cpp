@@ -934,14 +934,15 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
         case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF: // cp a, reg
         {
-            uint8_t val = Get((REGISTERS)(opcode & 0b00000111));
+            REGISTERS r = (REGISTERS)(opcode & 7);
+            uint8_t val = Get(r);
             uint8_t a = Get(REGISTERS::A);
-            uint8_t tot = a - val;
+            uint16_t tot = a - val;
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(true);
-            SetCY(IS_FULL_BORROW(a, val));
-            SetH(IS_HALF_BORROW(a, val));
+            SetCY(a < val);
+            SetH( ( a & 0x0F) < ( val & 0x0F ) );
 
             cycles = 4;
         }
@@ -951,11 +952,13 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t hl = Get(FULL_REGISTERS::HL);
             uint8_t val = mmu->Read(hl);
             uint8_t a = Get(REGISTERS::A);
-            uint8_t tot = a - val;
-            SetZ(0 == tot);
+            uint16_t tot = a - val;
+
+            SetZ(0 == (tot & 0xFF));
             SetN(true);
-            SetCY(IS_FULL_BORROW(a, val));
-            SetH(IS_HALF_BORROW(a, val));
+            SetCY(a < val);
+            SetH( ( a & 0x0F) < ( val & 0x0F ) );
+
             cycles = 8;
         }
             break;
@@ -963,12 +966,12 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             uint8_t val = ReadPC();
             uint8_t a = Get(REGISTERS::A);
-            uint8_t tot = a - val;
+            uint16_t tot = a - val;
 
-            SetZ(0 == tot);
+            SetZ(0 == (tot & 0xFF));
             SetN(true);
-            SetCY(IS_FULL_BORROW(a, val));
-            SetH(IS_HALF_BORROW(a, val));
+            SetCY(a < val);
+            SetH( ( a & 0x0F) < ( val & 0x0F ) );
 
             cycles = 8;
         }
@@ -1578,10 +1581,10 @@ void CPU::CheckExtension(uint8_t opcode) {
     switch (opcode) {
         case 0x30: case 0x31: case 0x32: case 0x33: case 0x34: case 0x35: case 0x37: // swap n
         {
-            REGISTERS r = RegisterParse(opcode);
+            REGISTERS r = (REGISTERS)(opcode & 7);
             uint8_t old =  Get(r);
-            uint8_t newHi = old & 0x0F << 4;
-            uint8_t newLo = old & 0xF0 >> 4;
+            uint8_t newHi = (old & 0x0F) << 4;
+            uint8_t newLo = (old & 0xF0) >> 4;
             uint8_t swap = newHi | newLo;
             Set(r, swap);
 

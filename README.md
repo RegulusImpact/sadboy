@@ -17,11 +17,11 @@ EE EE
 Failed
 ```
 
-### 09-op r,r - _Failed_
+### 09-op r,r - ~~_Failed_~~ _Passed_
 ```
 09-op r,r
 
-88 99 AA BB CC DD FF 88 99 AA BB CC DD FF BB 00 BB 11 BB 22 BB 33 BB 44 BB 55 BB 77
+BB 00 BB 11 BB 22 BB 33 BB 44 BB 55 BB 77
 Failed
 
 ```
@@ -30,7 +30,7 @@ Failed
 ```
 11-op a,(hl)
 
-EE 66 EE BB 66 BB 66
+66 EE BB 66 BB 66
 Failed
 ```
 

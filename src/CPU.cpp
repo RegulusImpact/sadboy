@@ -262,9 +262,10 @@ void CPU::PushSP(uint8_t value) {
 }
 
 void CPU::PushSP(uint16_t value) {
-    --stackPointer;
-    uint16_t addr = stackPointer--;
-    mmu->Write(addr, value);
+    uint8_t hi = (uint8_t)((value >> 8) & 0xFF);
+    uint8_t lo = (uint8_t)((value) & 0xFF);
+    PushSP(hi);
+    PushSP(lo);
 }
 
 int loopCounter = 0;

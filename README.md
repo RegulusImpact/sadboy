@@ -9,7 +9,7 @@
 88 88
 Failed
 ```
-### 04-op r,imm - _Failed_
+### 04-op r,imm - ~~_Failed_~~ _Passed_
 ```
 04-op r,imm
 

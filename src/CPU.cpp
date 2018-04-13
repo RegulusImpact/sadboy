@@ -717,8 +717,8 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             SetZ(0 == (tot & 0xFF));
             SetN(true);
-            SetCY(IS_FULL_BORROW(a, val));
-            SetH(IS_HALF_BORROW(a, val));
+            SetCY(((a ^ val ^ tot) & 0x100));
+            SetH(((a ^ val ^ tot) & 0x10));
 
             cycles = 4;
         }
@@ -749,8 +749,8 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             SetZ(0 == (tot & 0xFF));
             SetN(true);
-            SetCY(IS_FULL_BORROW(a, val));
-            SetH(IS_HALF_BORROW(a, val));
+            SetCY(((a ^ val ^ tot) & 0x100));
+            SetH(((a ^ val ^ tot) & 0x10));
 
             cycles = 8;
         }
@@ -779,11 +779,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t tot = a - val - (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
 
-
             SetZ(0 == (tot & 0xFF));
             SetN(true);
-            SetCY(IS_FULL_BORROW(a, val));
-            SetH(IS_HALF_BORROW(a, val));
+            SetCY(((a ^ val ^ tot) & 0x100));
+            SetH(((a ^ val ^ tot) & 0x10));
 
             cycles = 8;
         }

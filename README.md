@@ -2,7 +2,7 @@
 
 ## BLARGG'S CPU Intruction Tests:
 
-### 03-op sp,hl - _Failed_
+### 03-op sp,hl - ~~_Failed_~~ _Passed_
 ```
 03-op sp,hl
 

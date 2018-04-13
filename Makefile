@@ -3,7 +3,7 @@ CC = g++
 BIN = bin/
 SRC = src/
 INC = include/
-CPPFLAGS = -std=c++11 -g -Wall -I $(INC)
+CPPFLAGS = -std=c++14 -g -Wall -Wextra -pedantic -I $(INC)
 LDFLAGS =  $(INC)*.cpp #-lncursesw
 FILES = main CPU MMU Cartridge InterruptService XGPU
 OBJS = $(addprefix $(BIN), $(FILES:=.o))

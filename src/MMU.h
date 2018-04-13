@@ -105,7 +105,7 @@ public:
 
     void Copy(uint16_t destination, uint16_t source, size_t length);
 
-    void UpdateTile(uint16_t address, uint8_t value);
+    void UpdateTile(uint16_t address);
 
     void CheckMemory();
 };

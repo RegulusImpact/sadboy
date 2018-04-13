@@ -94,7 +94,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
     else if (addr >= 0x8000 && addr <= 0x9FFF) {
         vram[addr - 0x8000] = val;
         if (addr <= 0x97FF) {
-            UpdateTile(addr, val);
+            UpdateTile(addr);
         }
     }
 
@@ -181,7 +181,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 
             // probably the title when the first newline occurs
             enableDebugger = true;
-        } else if (c >= 0x20 && c <= 0xFE) {
+        } else if (c >= 0x20) {
             //c[0] = Read(0xFF01);
             std::cout << c;
             // if (c == 'd') exit(1);
@@ -204,7 +204,7 @@ void MMU::Copy(uint16_t destination, uint16_t source, size_t length) {
     }
 }
 
-void MMU::UpdateTile(uint16_t address, uint8_t value) {
+void MMU::UpdateTile(uint16_t address) {
 	address &= 0x1FFE;
 
 	uint16_t tile = (address >> 4) & 511;

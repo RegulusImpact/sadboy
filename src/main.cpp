@@ -16,7 +16,7 @@
 #include "Graphics/iGPU.h"
 #include "Graphics/XGPU.h"
 
-int main(int argc, char* argv[]) {
+int main() {
 
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/01-special.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/02-interrupts.gb"); // -- failed
@@ -88,15 +88,15 @@ int main(int argc, char* argv[]) {
         // }
         //
         //
-        if (cpu->programCounter > 0x100) {
-            if (cpu->programCounter % 1 == 0) {
-                fprintf(stderr,"af=%.4x bc=%.4x de=%.4x pc=%.4x\n",
-                cpu->Get(FULL_REGISTERS::AF),
-                cpu->Get(FULL_REGISTERS::BC),
-                cpu->Get(FULL_REGISTERS::DE),
-                cpu->programCounter);
-            }
-        }
+        // if (cpu->programCounter > 0x100) {
+        //     if (cpu->programCounter % 1 == 0) {
+        //         fprintf(stderr,"af=%.4x bc=%.4x de=%.4x pc=%.4x\n",
+        //         cpu->Get(FULL_REGISTERS::AF),
+        //         cpu->Get(FULL_REGISTERS::BC),
+        //         cpu->Get(FULL_REGISTERS::DE),
+        //         cpu->programCounter);
+        //     }
+        // }
 
         if (0 < breakpointExtension && 50 > breakpointExtension) {
             std::cout << "Breakpoint" << std::endl;

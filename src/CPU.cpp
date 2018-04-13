@@ -725,7 +725,8 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             break;
         case 0x96: // sub a, (hl)
         {
-            uint8_t val = Get(FULL_REGISTERS::HL);
+            uint16_t addr = Get(FULL_REGISTERS::HL);
+            uint8_t val = mmu->Read(addr);
             uint8_t a = Get(REGISTERS::A);
             uint8_t tot = a - val;
             Set(REGISTERS::A, tot);
@@ -742,7 +743,8 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             bool carry = GetCY();
 
-            uint16_t val = Get(FULL_REGISTERS::HL);
+            uint16_t addr = Get(FULL_REGISTERS::HL);
+            uint8_t val = mmu->Read(addr);
             uint16_t a = Get(REGISTERS::A);
             uint16_t tot = a - val - (carry ? 1 : 0);
             Set(REGISTERS::A, (uint8_t)(tot & 0xFF));
@@ -1668,7 +1670,7 @@ void CPU::CheckExtension(uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t a = mmu->Read(addr);
-            uint8_t cy = GetCY() != 0 ? 0b00000001 : 0b00000000;
+            uint8_t cy = GetCY() != 0 ? 1 : 0;
             uint8_t c = a >> 7;
             a = (a << 1) | cy;
             mmu->Write(addr, a);

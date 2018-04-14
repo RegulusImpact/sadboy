@@ -1602,8 +1602,8 @@ void CPU::CheckExtension(uint8_t opcode) {
         {
             uint16_t addr =  Get(FULL_REGISTERS::HL);
             uint8_t old = mmu->Read(addr);
-            uint8_t newHi = old & 0x0F << 4;
-            uint8_t newLo = old & 0xF0 >> 4;
+            uint8_t newHi = (old & 0x0F) << 4;
+            uint8_t newLo = (old & 0xF0) >> 4;
             uint8_t swap = newHi | newLo;
             mmu->Write(addr, swap);
 
@@ -1654,10 +1654,11 @@ void CPU::CheckExtension(uint8_t opcode) {
             REGISTERS r = (REGISTERS)(opcode & 0b0111);
 
             uint8_t a = Get(r);
-            uint8_t cy = GetCY() != 0 ? 1 : 0;
+            uint8_t cy = GetCY() ? 1 : 0;
             uint8_t c = a >> 7;
             a = (a << 1) | cy;
             Set(r, a);
+
             SetZ(a == 0);
             SetN(false);
             SetCY(c != 0);
@@ -1670,14 +1671,14 @@ void CPU::CheckExtension(uint8_t opcode) {
         {
             uint16_t addr = Get(FULL_REGISTERS::HL);
             uint8_t a = mmu->Read(addr);
-            uint8_t cy = GetCY() != 0 ? 1 : 0;
-            uint8_t c = a >> 7;
-            a = (a << 1) | cy;
-            mmu->Write(addr, a);
+            uint8_t cy = (GetCY() ? 1 : 0);
+            uint8_t c = (a >> 7);
+            uint8_t tot = (a << 1) | cy;
+            mmu->Write(addr, tot);
 
-            SetZ(a);
+            SetZ(tot == 0);
             SetN(false);
-            SetCY(c);
+            SetCY(c != 0);
             SetH(false);
 
             cycles = 16;

@@ -26,7 +26,7 @@ Failed
 
 ```
 
-### 11-op a,(hl) - _Failed_
+### 11-op a,(hl) - ~~_Failed_~~ _Passed_
 ```
 11-op a,(hl)
 

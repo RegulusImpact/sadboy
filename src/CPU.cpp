@@ -282,6 +282,13 @@ void CPU::Read() {
         //     std::fprintf(stderr, "%.4X: %.2X\n", pc, opcode);
         // }
         CheckOpcode(opcode);
+    } else {
+        cycles = 4;
+    }
+
+    if (haltNext) {
+        haltNext = false;
+        halt = true;
     }
 }
 
@@ -1209,6 +1216,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0x76: // HALT
         {
             // std::cout << "HALT" << std::endl;
+            haltNext = true;
             cycles = 4;
         }
             break;
@@ -1222,7 +1230,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             // disable interrupts
             IME = 0x00;
-            mmu->Write(0xFFFF, (uint8_t)0x00);
             cycles = 4;
         }
             break;
@@ -1230,7 +1237,6 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             // enable interrupts
             IME = 0xFF;
-            mmu->Write(0xFFFF, (uint8_t)0xFF);
             cycles = 4;
         }
             break;

@@ -5,7 +5,7 @@ SRC = src/
 INC = include/
 CPPFLAGS = -std=c++14 -g -Wall -Wextra -pedantic -I $(INC)
 LDFLAGS =  $(INC)*.cpp #-lncursesw
-FILES = main CPU MMU Cartridge InterruptService XGPU
+FILES = main CPU MMU Cartridge InterruptService TimerService XGPU
 OBJS = $(addprefix $(BIN), $(FILES:=.o))
 
 
@@ -32,6 +32,9 @@ XGPU: $(SRC)Graphics/XGPU.h
 	$(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -l $(SRC)Graphics/iGPU.h -lX11
 
 InterruptService: $(SRC)InterruptService.h
+	$(CC) $(CPPFLAGS) -c $(SRC)$@.cpp -o $(BIN)$@.o
+
+TimerService: $(SRC)TimerService.h
 	$(CC) $(CPPFLAGS) -c $(SRC)$@.cpp -o $(BIN)$@.o
 
 clean:

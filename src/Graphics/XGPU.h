@@ -17,6 +17,8 @@
 
 // Other Classes
 #include "../MMU.h"
+#include "../Utils.h"
+#include "../InterruptService.h"
 
 // X11 programming reference
 // http://math.msu.su/~vvb/2course/Borisenko/CppProjects/GWindow/xintro.html
@@ -65,6 +67,9 @@ public:
 
     void IncrementScanline();
     void ResetScanline();
+
+    void TriggerVBlank();
+    void TriggerLCDStat(uint8_t statusBit);
 
     // Special Getters - pull values from memory at the startup / start step
     void Sync();

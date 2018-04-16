@@ -9,17 +9,22 @@
 #include <string>
 #include <random>
 
+#include <chrono>
+
 #include "CPU.h"
 #include "MMU.h"
 #include "InterruptService.h"
+#include "TimerService.h"
+
 #include "Cartridge.h"
+
 #include "Graphics/iGPU.h"
 #include "Graphics/XGPU.h"
 
 int main() {
 
-    Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/01-special.gb"); // -- passed
-    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/02-interrupts.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/01-special.gb"); // -- passed
+    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/02-interrupts.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb"); // -- Passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/04-op r,imm.gb"); // -- Passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/05-op rp.gb"); // -- passed
@@ -29,6 +34,9 @@ int main() {
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/09-op r,r.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/10-bit ops.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb"); // -- passed
+
+        // Cartridge* cart = new Cartridge("submodules/gb-test-roms/instr_timing/instr_timing.gb"); // -- failed
+        Cartridge* cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
     if (!cart->IsLoaded()) {
         std::cout << "Cartridge is not loaded." << std::endl;
         exit(1);
@@ -36,76 +44,37 @@ int main() {
 
     MMU* mmu = new MMU(cart);
     CPU* cpu = new CPU(mmu);
-    // InterruptService* is = new InterruptService(cpu, mmu);
-    // iGPU* gpu = new TextGPU(mmu);
+    InterruptService* is = new InterruptService(cpu, mmu);
+    TimerService* ts = new TimerService(cpu, mmu, is);
     iGPU* gpu = new XGPU(mmu, 3);
 
     uint32_t counter = 0;
     uint32_t breakpointExtension = 0;
     int qq;
 
+    // frame limiter
+    double msBefore, msAfter;
+
     while (true) {
+        msBefore = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
         cpu->Read(); // fetch, decode, execute
 
-
-        // by c025, the title prints
-
-        // by c7ef shits broke
-        //    f is wrong
-        //         because add hlhl is wrong
-
-        //code enters infinite loop somewhere in the call c787,
-        // never reaches cb2b
-
-        // throwing no opcde on "def9"
-
-        // c4af
-        // c4 e6
-
-        //c4e6
-
-        // //09
-
-        // breaks somewhere in the function call at cadd
-        // breaks somewhere in ca35 as this leads to cadd
-        // breaks somewhere in ca97
-        // "        "           c9f2
-        // if (cpu->programCounter == 0xCA01) {
-        // if (cpu->programCounter == 0xCA01) {
-        //     breakpointExtension = 1;
-        // }
-
-        //is->CheckInterrupts();
-        // usleep(350);
-        // if (f == 0x00 && ap == 0x14 && af == 0x34) {
-        //     breakpointExtension = 1;
-        // }
+        ts->Increment();
+        is->CheckInterrupts();
+        // ts->Increment();
 
         gpu->Step(cpu->GetCycles());
-        //
-        // if (counter == 2368556) {
-        //     breakpointExtension = 1;
-        // }
-        //
-        //
-        // if (cpu->programCounter > 0x100) {
-        //     if (cpu->programCounter % 1 == 0) {
-        //         fprintf(stderr,"af=%.4x bc=%.4x de=%.4x pc=%.4x\n",
-        //         cpu->Get(FULL_REGISTERS::AF),
-        //         cpu->Get(FULL_REGISTERS::BC),
-        //         cpu->Get(FULL_REGISTERS::DE),
-        //         cpu->programCounter);
-        //     }
-        // }
 
         if (0 < breakpointExtension && 50 > breakpointExtension) {
             std::cout << "Breakpoint" << std::endl;
-            printf("\tAF=%.4X\t\t(DEF8): %.2X\n", cpu->Get(FULL_REGISTERS::AF),mmu->Read(0xFF40));
-            printf("\tBC=%.4X\t\t(DEF9): %.2X\n", cpu->Get(FULL_REGISTERS::BC),mmu->Read(0xFF40));
-            printf("\tDE=%.4X\t\t(DEFA): %.2X\n", cpu->Get(FULL_REGISTERS::DE),mmu->Read(0xFF40));
-            printf("\tHL=%.4X\t\t(DEFB): %.2X\n", cpu->Get(FULL_REGISTERS::HL),mmu->Read(0xFF40));
-            printf("\tSP=%.4X\t\t(DEFC): %.2X\n", cpu->stackPointer           ,mmu->Read(0xFF40));
-            printf("\tPC=%.4X\t\t(DEFD): %.2X\n", cpu->programCounter         ,mmu->Read(0xFF40));
+            printf("\tAF=%.4X", cpu->Get(FULL_REGISTERS::AF));
+            printf("\tBC=%.4X", cpu->Get(FULL_REGISTERS::BC));
+            printf("\tDE=%.4X", cpu->Get(FULL_REGISTERS::DE));
+            printf("\tHL=%.4X", cpu->Get(FULL_REGISTERS::HL));
+            printf("\tSP=%.4X", cpu->stackPointer           );
+            printf("\tPC=%.4X", cpu->programCounter         );
             std::cin >> qq;
             breakpointExtension--;
         }
@@ -114,12 +83,16 @@ int main() {
             cpu->CheckRegisters();
             mmu->CheckMemory();
             mmu->readBios = false;
-
-            // gpu->DumpTileset();
-            // gpu->DumpTiles();
         }
 
         counter++;
+        msAfter = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count();
+        double timespan = msAfter - msBefore;
+        if (timespan < 16) {
+            // usleep((16 - timespan));
+        }
     }
 
     return 0;

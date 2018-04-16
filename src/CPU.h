@@ -10,9 +10,7 @@
 #include <string.h>
 
 #include "MMU.h"
-
-// testing
-#include <fstream>
+#include "Utils.h"
 
 /* Full and Half Carry */
 /* Source: https://github.com/nnarain/gameboycore/blob/54fbba36beab61e0e6f4d37a090aa2b84b81a748/src/core/bitutil.h */
@@ -84,14 +82,15 @@ public:
     std::uint16_t stackPointer;
     std::uint8_t opcode;
     bool halt;
+    bool haltNext;
 
 #ifndef FLAGS_ENUM
 #define FLAGS_ENUM
     enum FLAGS {
-        Z  = 0b10000000,
-        N  = 0b01000000,
-        H  = 0b00100000,
-        CY = 0b00010000
+        Z  = Utils::BIT_7,
+        N  = Utils::BIT_6,
+        H  = Utils::BIT_5,
+        CY = Utils::BIT_4
     };
 #endif
 

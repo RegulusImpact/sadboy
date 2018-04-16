@@ -15,6 +15,7 @@ MMU::MMU(Cartridge* crt) {
     readBios = true;
     enableDebugger = false;
 
+    Write(0xFF00, (uint8_t)0x1);
     Write(0xFF41, (uint8_t)3);
 
     loadBootrom();
@@ -62,6 +63,7 @@ std::uint8_t MMU::Read(uint16_t addr) {
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         return hram[addr - 0xFF80];
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
+        if (addr == 0xff00) return 1;
         return io[(uint8_t)(addr - 0xFF00)];
     }
     else if (addr == 0xFFFF)
@@ -249,5 +251,5 @@ void MMU::CheckMemory() {
     if (Read(0xFF47) != 0xFC) { std::cout << "failed on FF47" << std::endl; exit(1); } // BGP
     if (Read(0xFF4A) != 0x00) { std::cout << "failed on FF4A" << std::endl; printf("%.2X", Read(0xFF4A)); exit(1); } // WY
     if (Read(0xFF4B) != 0x00) { std::cout << "failed on FF4B" << std::endl; printf("%.2X", Read(0xFF4B)); exit(1); } // WX
-    if (Read(0xFFFF) != 0x00) { std::cout << "failed on FFFF" << std::endl; printf("%.2X", Read(0xFFFF)); exit(1); } // IE
+    // if (Read(0xFFFF) != 0x00) { std::cout << "failed on FFFF" << std::endl; printf("%.2X", Read(0xFFFF)); exit(1); } // IE
 }

@@ -6,21 +6,11 @@
 // size_t
 #include <cstddef>
 
-#include "../MMU.h"
-
 class iGPU {
 protected:
     // internal reference variables
     static const uint8_t MAX_Y = 144;
     static const uint8_t MAX_X = 160;
-    static const uint8_t BIT_0 = (1 << 0);
-    static const uint8_t BIT_1 = (1 << 1);
-    static const uint8_t BIT_2 = (1 << 2);
-    static const uint8_t BIT_3 = (1 << 3);
-    static const uint8_t BIT_4 = (1 << 4);
-    static const uint8_t BIT_5 = (1 << 5);
-    static const uint8_t BIT_6 = (1 << 6);
-    static const uint8_t BIT_7 = (1 << 7);
 
     enum GPU_MODE {
         OAM = 0b10,

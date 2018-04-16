@@ -4,37 +4,38 @@
 
 #include "MMU.h"
 #include "CPU.h"
+#include "Utils.h"
 
 class InterruptService {
 private:
     MMU* mmu;
     CPU* cpu;
-    
-    const uint16_t  IE = 0xFFFF;
-    const uint16_t  IFLAGS = 0xFF0F;
-    
-    const uint8_t  vBlankBit = 0b00000001; // bit 0
-    const uint8_t lcdStatBit = 0b00000010; // bit 1
-    const uint8_t   timerBit = 0b00000100; // bit 2
-    const uint8_t  serialBit = 0b00001000; // bit 3
-    const uint8_t  joyPadBit = 0b00010000; // bit 4
-    
-    const uint16_t  vBlankISR = 0x0040;
-    const uint16_t lcdStatISR = 0x0048;
-    const uint16_t   timerISR = 0x0050;
-    const uint16_t  serialISR = 0x0058;
-    const uint16_t  joyPadISR = 0x0060;
-    
+
     void PushFullRegisters();
     void PopFullRegisters();
-    
+
 public:
+    static const uint16_t  IE = 0xFFFF;
+    static const uint16_t  IFLAGS = 0xFF0F;
+
+    static const uint8_t  vBlankBit = Utils::BIT_0; // bit 0
+    static const uint8_t lcdStatBit = Utils::BIT_1; // bit 1
+    static const uint8_t   timerBit = Utils::BIT_2; // bit 2
+    static const uint8_t  serialBit = Utils::BIT_3; // bit 3
+    static const uint8_t  joyPadBit = Utils::BIT_4; // bit 4
+
+    static const uint16_t  vBlankISR = 0x0040;
+    static const uint16_t lcdStatISR = 0x0048;
+    static const uint16_t   timerISR = 0x0050;
+    static const uint16_t  serialISR = 0x0058;
+    static const uint16_t  joyPadISR = 0x0060;
+
     InterruptService(CPU* c, MMU* m);
     ~InterruptService();
-    
+
     void DisableHalt();
     void CheckInterrupts();
-    
+
     void VBlankInterrupt();
     void LCDStatInterrupt();
     void TimerInterrupt();

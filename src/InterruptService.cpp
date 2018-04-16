@@ -17,13 +17,14 @@ void InterruptService::DisableHalt() {
 
     // if any interrupt enable bit and corresponding flags are set
     // regardless of the IME, disable HALT
-    if (((ie & flags & vBlankBit) > 0)  ||
+    if (((ie & flags & vBlankBit)  > 0) ||
         ((ie & flags & lcdStatBit) > 0) ||
-        ((ie & flags & timerBit) > 0)   ||
-        ((ie & flags & serialBit) > 0)  ||
-        ((ie & flags & joyPadBit) > 0))
+        ((ie & flags & timerBit)   > 0) ||
+        ((ie & flags & serialBit)  > 0) ||
+        ((ie & flags & joyPadBit)  > 0))
     {
         cpu->halt = false;
+        cpu->AddCycles(4);
     }
 }
 
@@ -32,35 +33,46 @@ void InterruptService::CheckInterrupts() {
     if (cpu->GetIME()) {
         uint8_t ie = mmu->Read(IE);
         uint8_t flags = mmu->Read(IFLAGS);
+        bool interrupted = false;
 
-        // if bit0 (vBlankBit) is enable on IE and 0xFF0F
-        if ((ie & flags & vBlankBit) > 0) {
-            flags &= ~vBlankBit;
-            VBlankInterrupt();
-        }
-
-        // if bit1 (lcdStatBit) is enable on IE and 0xFF0F
-        if ((ie & flags & lcdStatBit) > 0) {
-            flags &= ~lcdStatBit;
-            LCDStatInterrupt();
-        }
-
-        // if bit2 (timerBit) is enable on IE and 0xFF0F
-        if ((ie & flags & timerBit) > 0) {
-            flags &= ~timerBit;
-            TimerInterrupt();
+        // if bit4 (joyPadBit) is enable on IE and 0xFF0F
+        if ((ie & flags & joyPadBit) > 0) {
+            interrupted = true;
+            flags &= ~joyPadBit;
+            JoyPadInterrupt();
         }
 
         // if bit3 (serialBit) is enable on IE and 0xFF0F
         if ((ie & flags & serialBit) > 0) {
+            interrupted = true;
             flags &= ~serialBit;
             SerialInterrupt();
         }
 
-        // if bit4 (joyPadBit) is enable on IE and 0xFF0F
-        if ((ie & flags & joyPadBit) > 0) {
-            flags &= ~joyPadBit;
-            JoyPadInterrupt();
+        // if bit2 (timerBit) is enable on IE and 0xFF0F
+        if ((ie & flags & timerBit) > 0) {
+            interrupted = true;
+            flags &= ~timerBit;
+            TimerInterrupt();
+            printf("TIMER OVERFLOW\n");
+        }
+
+        // if bit1 (lcdStatBit) is enable on IE and 0xFF0F
+        if ((ie & flags & lcdStatBit) > 0) {
+            interrupted = true;
+            flags &= ~lcdStatBit;
+            LCDStatInterrupt();
+        }
+
+        // if bit0 (vBlankBit) is enable on IE and 0xFF0F
+        if ((ie & flags & vBlankBit) > 0) {
+            interrupted = true;
+            flags &= ~vBlankBit;
+            VBlankInterrupt();
+        }
+
+        if (interrupted) {
+            cpu->SetIME(0x00);
         }
 
         mmu->Write(IFLAGS, flags);
@@ -92,35 +104,30 @@ void InterruptService::PopFullRegisters() {
 }
 
 void InterruptService::VBlankInterrupt() {
-    cpu->SetIME(0x00);
     cpu->PushSP(cpu->programCounter);
     cpu->AddCycles(12);
     cpu->programCounter = vBlankISR;
 }
 
 void InterruptService::LCDStatInterrupt() {
-    cpu->SetIME(0x00);
     cpu->PushSP(cpu->programCounter);
     cpu->AddCycles(12);
     cpu->programCounter = lcdStatISR;
 }
 
 void InterruptService::TimerInterrupt() {
-    cpu->SetIME(0x00);
     cpu->PushSP(cpu->programCounter);
     cpu->AddCycles(12);
     cpu->programCounter = timerISR;
 }
 
 void InterruptService::SerialInterrupt() {
-    cpu->SetIME(0x00);
     cpu->PushSP(cpu->programCounter);
     cpu->AddCycles(12);
     cpu->programCounter = serialISR;
 }
 
 void InterruptService::JoyPadInterrupt() {
-    cpu->SetIME(0x00);
     cpu->PushSP(cpu->programCounter);
     cpu->AddCycles(12);
     cpu->programCounter = joyPadISR;

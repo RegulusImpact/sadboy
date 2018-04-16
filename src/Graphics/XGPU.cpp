@@ -144,21 +144,21 @@ void XGPU::SetLYC(uint8_t val)       { mmu->Write(LYC_ADDRESS, val); }
 void XGPU::Sync() {
     // control
     control = GetControl();
-        lcdOperation = (control & BIT_7) != 0;
-        windowTilemap = (control & BIT_6) != 0;
-        windowDisplay = (control & BIT_5) != 0;
-        bgTile = (control & BIT_4) != 0;
-        bgMap = (control & BIT_3) != 0;
-        spriteSize = (control & BIT_2) != 0;
-        spriteDisplay = (control & BIT_1) != 0;
-        bgDisplay = (control & BIT_0) != 0;
+        lcdOperation = (control & Utils::BIT_7) != 0;
+        windowTilemap = (control & Utils::BIT_6) != 0;
+        windowDisplay = (control & Utils::BIT_5) != 0;
+        bgTile = (control & Utils::BIT_4) != 0;
+        bgMap = (control & Utils::BIT_3) != 0;
+        spriteSize = (control & Utils::BIT_2) != 0;
+        spriteDisplay = (control & Utils::BIT_1) != 0;
+        bgDisplay = (control & Utils::BIT_0) != 0;
 
     // lcdc stats
     lcdStat = GetLCDStat();
-        useLYC = (lcdStat & BIT_6) != 0;
-        coincidence = (lcdStat & BIT_2) != 0;
+        useLYC = (lcdStat & Utils::BIT_6) != 0;
+        coincidence = (lcdStat & Utils::BIT_2) != 0;
         // bit 1 - 0 -mode flag
-        mode = (GPU_MODE)(lcdStat & (BIT_1 | BIT_0));
+        mode = (GPU_MODE)(lcdStat & (Utils::BIT_1 | Utils::BIT_0));
 
     // scroll y
     scrollY = GetScrollY();
@@ -176,9 +176,13 @@ void XGPU::Sync() {
 void XGPU::SyncMemory() {
     // lcdc stats
     // clear bits; conditionally clear the coincidence
-    lcdStat = lcdStat & ~(BIT_1 | BIT_0) & ~(useLYC ? BIT_2 : 0x00);
+    lcdStat = lcdStat & ~(Utils::BIT_1 | Utils::BIT_0) & ~(useLYC ? Utils::BIT_2 : 0x00);
     lcdStat |= mode;
-    lcdStat |= (scanline == lyc) ? BIT_2 : 0x00;
+    lcdStat |= (scanline == lyc) ? Utils::BIT_2 : 0x00;
+
+    if (scanline == lyc) {
+        TriggerLCDStat(Utils::BIT_6); // trigger hblank lcdc status interrupt
+    }
     SetLCDStat(lcdStat);
 
     // LY (scanline)
@@ -192,6 +196,26 @@ void XGPU::IncrementScanline() {
 
 void XGPU::ResetScanline() {
     scanline = 0;
+}
+
+void XGPU::TriggerVBlank() {
+    uint8_t flags = mmu->Read(InterruptService::IFLAGS);
+    flags |= InterruptService::vBlankBit;
+    mmu->Write(InterruptService::IFLAGS, flags);
+}
+
+void XGPU::TriggerLCDStat(uint8_t statusBit) {
+    uint8_t flags = mmu->Read(InterruptService::IFLAGS);
+    flags |= InterruptService::lcdStatBit;
+    mmu->Write(InterruptService::IFLAGS, flags);
+
+
+    lcdStat &=~ Utils::BIT_6;
+    lcdStat &=~ Utils::BIT_5;
+    lcdStat &=~ Utils::BIT_4;
+    lcdStat &=~ Utils::BIT_3;
+
+    lcdStat |= statusBit;
 }
 
 // Rendering
@@ -213,6 +237,7 @@ void XGPU::Step(uint32_t clockStep) {
             if (clocks >= 172) {
                 clocks = 0;
                 mode = GPU_MODE::HBLANK;
+                TriggerLCDStat(Utils::BIT_3); // trigger hblank lcdc status interrupt
 
                 RenderScanline();
             }
@@ -226,6 +251,8 @@ void XGPU::Step(uint32_t clockStep) {
 
                 if (scanline == 143) {
                     mode = GPU_MODE::VBLANK;
+                    TriggerVBlank();
+                    TriggerLCDStat(Utils::BIT_4); // trigger vblank lcdc status interrupt
                     RenderFrame();
                 } else {
                     mode = GPU_MODE::OAM;
@@ -242,6 +269,8 @@ void XGPU::Step(uint32_t clockStep) {
 
                 if (scanline > 153) {
                     mode = GPU_MODE::OAM;
+                    TriggerLCDStat(Utils::BIT_5); // trigger oam-rams lcdc status interrupt
+
                     ResetScanline();
                     //XFlush(display);
                 }

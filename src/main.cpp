@@ -36,7 +36,11 @@ int main() {
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb"); // -- passed
 
         // Cartridge* cart = new Cartridge("submodules/gb-test-roms/instr_timing/instr_timing.gb"); // -- failed
-        Cartridge* cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
+        // Cartridge* cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
+
+        Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/div_write.gb"); // -- failed
+        // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/ie_push.gb"); // -- failed
+        // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/rapid_toggle.gb"); // -- failed
     if (!cart->IsLoaded()) {
         std::cout << "Cartridge is not loaded." << std::endl;
         exit(1);
@@ -63,7 +67,7 @@ int main() {
 
         ts->Increment();
         is->CheckInterrupts();
-        // ts->Increment();
+        ts->Increment();
 
         gpu->Step(cpu->GetCycles());
 

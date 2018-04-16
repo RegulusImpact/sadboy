@@ -119,10 +119,15 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         hram[addr - 0xFF80] = val;
-    else if (addr >= 0xFF00 && addr <= 0xFF7F) {\
+    else if (addr >= 0xFF00 && addr <= 0xFF7F) {
         // io[addr - 0xFF00] = val;
 
-        if (addr == 0xFF0F) {
+
+        // stupid timers div and tima
+        if (addr == 0xFF04) {
+            io[0xFF04 - 0xFF00] = 0;
+            io[0xFF05 - 0xFF00] = 0;
+        } else if (addr == 0xFF0F) {
             if (Read(0xFFFF) > 0) {
                 io[addr - 0xFF00] = val;
             }
@@ -198,6 +203,12 @@ void MMU::Write(uint16_t addr, uint16_t val) {
 
     Write(addr, (uint8_t)((val & 0xFF00) >> 8));
     Write((addr-1), (uint8_t)(val & 0x00FF));
+}
+
+void MMU::WriteTimers(uint16_t addr, uint16_t val) {
+    if (addr == 0xFF04 || addr == 0xFF05) {
+        io[addr - 0xFF00] = val;
+    }
 }
 
 void MMU::Copy(uint16_t destination, uint16_t source, size_t length) {

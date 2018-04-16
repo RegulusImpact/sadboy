@@ -102,6 +102,7 @@ public:
     std::uint16_t Read16Bit(uint16_t addr);
     void Write(uint16_t addr, uint8_t val);
     void Write(uint16_t addr, uint16_t val);
+    void WriteTimers(uint16_t addr, uint16_t val);
 
     void Copy(uint16_t destination, uint16_t source, size_t length);
 

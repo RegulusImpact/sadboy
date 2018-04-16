@@ -216,6 +216,7 @@ void XGPU::TriggerLCDStat(uint8_t statusBit) {
     lcdStat &=~ Utils::BIT_3;
 
     lcdStat |= statusBit;
+    SetLCDStat(lcdStat);
 }
 
 // Rendering

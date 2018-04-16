@@ -47,15 +47,10 @@ void TimerService::CheckTima() {
                 break;
         }
 
-        bool stepped = false;
-        while (timaClock >= clockSpeed) {
+        if (timaClock >= clockSpeed) {
             timaClock -= clockSpeed;
             StepTima();
-            stepped = true;
-        }
-
-        if (stepped) {
-            timaClock = 0;
+                timaClock = 0;
         }
     }
 }
@@ -64,7 +59,7 @@ void TimerService::CheckDiv() {
     if (divClock >= 0xFF) {
         uint8_t div = mmu->Read(divAddr);
         div++;
-        mmu->Write(divAddr, div);
+        mmu->WriteTimers(divAddr, div);
         divClock %= 256; // we want to keep ALL OF THE CLOCKS
     }
 }

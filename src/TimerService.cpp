@@ -47,10 +47,15 @@ void TimerService::CheckTima() {
                 break;
         }
 
-        if (timaClock >= clockSpeed) {
+        bool trig = false;
+        while (timaClock >= clockSpeed) {
             timaClock -= clockSpeed;
             StepTima();
-                timaClock = 0;
+            trig = true;
+        }
+
+        if (trig) {
+            timaClock = 0;
         }
     }
 }
@@ -70,6 +75,7 @@ void TimerService::StepTima() {
 
     if (tima > 255) {
         tima = mmu->Read(moduloAddr);
+        cpu->AddCycles(4);
         TimaInterrupt();
     }
 
@@ -80,4 +86,5 @@ void TimerService::TimaInterrupt() {
     uint8_t flags = mmu->Read(InterruptService::IFLAGS);
     flags |= InterruptService::timerBit;
     mmu->Write(InterruptService::IFLAGS, flags);
+    cpu->AddCycles(4);
 }

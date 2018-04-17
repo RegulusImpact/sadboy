@@ -286,6 +286,11 @@ void CPU::Read() {
         cycles = 4;
     }
 
+    if (imeNext) {
+        imeNext = false;
+        IME = 0xFF;
+    }
+
     if (haltNext) {
         haltNext = false;
         halt = true;
@@ -1217,7 +1222,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         {
             // std::cout << "HALT" << std::endl;
             haltNext = true;
-            cycles = 4;
+            cycles = 16;
         }
             break;
         case 0x10: // STOP
@@ -1236,7 +1241,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
         case 0xFB: // ei
         {
             // enable interrupts
-            IME = 0xFF;
+            imeNext = true;
             cycles = 4;
         }
             break;
@@ -1307,7 +1312,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t nn = ReadPC16();
             programCounter = nn;
 
-            cycles = 12;
+            cycles = 16;
         }
             break;
         case 0xC2: // jpnz
@@ -1316,9 +1321,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             if (!GetZ()) {
                 programCounter = nn;
+                cycles = 16;
+            } else {
+                cycles = 12;
             }
-
-            cycles = 12;
         }
             break;
         case 0xCA: // jpz
@@ -1327,9 +1333,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             if (GetZ()) {
                 programCounter = nn;
+                cycles = 16;
+            } else {
+                cycles = 12;
             }
-
-            cycles = 12;
         }
             break;
         case 0xD2: // jpnc
@@ -1338,9 +1345,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             if (!GetCY()) {
                 programCounter = nn;
+                cycles = 16;
+            } else {
+                cycles = 12;
             }
-
-            cycles = 12;
         }
             break;
         case 0xDA: // jpc
@@ -1349,9 +1357,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             if (GetCY()) {
                 programCounter = nn;
+                cycles = 16;
+            } else {
+                cycles = 12;
             }
-
-            cycles = 12;
         }
             break;
         case 0xE9: // jphl
@@ -1367,7 +1376,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n = TWOS_COMPLEMENT(ReadPC());
             programCounter += n;
 
-            cycles = 8;
+            cycles = 12;
         }
             break;
         case 0x20: // jr nz.n
@@ -1377,9 +1386,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
             if (!GetZ()) {
                 programCounter += n;
+                cycles = 12;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0x28: // jr z.n
@@ -1388,9 +1398,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n =  TWOS_COMPLEMENT(un);
             if (GetZ()) {
                 programCounter += n;
+                cycles = 12;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0x30: // jr nc.n
@@ -1399,10 +1410,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n =  TWOS_COMPLEMENT(un);
             if (!GetCY()) {
                 programCounter += n;
-
+                cycles = 12;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0x38: // jr c.n
@@ -1411,9 +1422,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             int8_t n =  TWOS_COMPLEMENT(un);
             if (GetCY()) {
                 programCounter += n;
+                cycles = 12;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0xCD: // CALL nn
@@ -1425,7 +1437,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             PushSP(programCounter);
             programCounter = nn;
 
-            cycles = 12;
+            cycles = 24;
         }
             break;
 
@@ -1439,9 +1451,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
                 PushSP(programCounter);
                 programCounter = nn;
-            }
 
-            cycles = 8;
+                cycles = 24;
+            } else {
+                cycles = 12;
+            }
         }
             break;
         case 0xCC: // call z.n
@@ -1454,9 +1468,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
                 PushSP(programCounter);
                 programCounter = nn;
-            }
 
-            cycles = 8;
+                cycles = 24;
+            } else {
+                cycles = 12;
+            }
         }
             break;
         case 0xD4: // call nc.n
@@ -1469,9 +1485,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
                 PushSP(programCounter);
                 programCounter = nn;
-            }
 
-            cycles = 8;
+                cycles = 24;
+            } else {
+                cycles = 12;
+            }
         }
             break;
         case 0xDC: // call c.n
@@ -1484,9 +1502,11 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
 
                 PushSP(programCounter);
                 programCounter = nn;
-            }
 
-            cycles = 8;
+                cycles = 24;
+            } else {
+                cycles = 12;
+            }
         }
             break;
         case 0xC7: case 0xCF: case 0xD7: case 0xDF: case 0xE7: case 0xEF: case 0xF7: case 0xFF: // RST n
@@ -1498,7 +1518,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             PushSP(programCounter);
             programCounter = 0x0000 | (opcode - 0xC7);
 
-            cycles = 32;
+            cycles = 16;
         }
             break;
         case 0xC9: // RET
@@ -1509,7 +1529,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t nn = PopSP16();
             programCounter = nn;
 
-            cycles = 8;
+            cycles = 16;
         }
             break;
         case 0xC0: // RET cc
@@ -1520,9 +1540,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //uint16_t nn = mmu->Read16Bit(addr);
                 uint16_t nn = PopSP16();
                 programCounter = nn;
+                cycles = 20;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0xC8: // RET cc
@@ -1533,9 +1554,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //uint16_t nn = mmu->Read16Bit(addr);
                 uint16_t nn = PopSP16();
                 programCounter = nn;
+                cycles = 20;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0xD0: // RET cc
@@ -1546,9 +1568,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //uint16_t nn = mmu->Read16Bit(addr);
                 uint16_t nn = PopSP16();
                 programCounter = nn;
+                cycles = 20;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0xD8: // RET cc
@@ -1559,9 +1582,10 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
                 //uint16_t nn = mmu->Read16Bit(addr);
                 uint16_t nn = PopSP16();
                 programCounter = nn;
+                cycles = 20;
+            } else {
+                cycles = 8;
             }
-
-            cycles = 8;
         }
             break;
         case 0xD9: // RETI
@@ -1573,7 +1597,7 @@ void CPU::CheckOpcode(std::uint8_t opcode) {
             uint16_t nn = PopSP16();
             programCounter = nn;
 
-            cycles = 8;
+            cycles = 16;
         }
             break;
         default:

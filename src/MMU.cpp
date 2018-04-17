@@ -143,7 +143,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         else if (addr == 0xFF46) {
             Copy(0xFE00, ((uint16_t)val) << 8, 160); // oam dma
 
-            io[addr - 0xFF00] = val;
+            // io[addr - 0xFF00] = val;
         }
 
         else if (addr == 0xFF47) { // setup bgp

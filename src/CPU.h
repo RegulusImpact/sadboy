@@ -83,6 +83,7 @@ public:
     std::uint8_t opcode;
     bool halt;
     bool haltNext;
+    bool imeNext;
 
 #ifndef FLAGS_ENUM
 #define FLAGS_ENUM

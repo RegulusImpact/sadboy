@@ -11,8 +11,7 @@ private:
     MMU* mmu;
     CPU* cpu;
 
-    void PushFullRegisters();
-    void PopFullRegisters();
+    uint8_t dispatch;
 
 public:
     static const uint16_t  IE = 0xFFFF;
@@ -34,7 +33,8 @@ public:
     ~InterruptService();
 
     void DisableHalt();
-    void CheckInterrupts();
+    bool CheckInterrupts();
+    void Dispatch();
 
     void VBlankInterrupt();
     void LCDStatInterrupt();

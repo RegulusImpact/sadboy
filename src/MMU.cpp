@@ -63,7 +63,6 @@ std::uint8_t MMU::Read(uint16_t addr) {
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         return hram[addr - 0xFF80];
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
-        if (addr == 0xff00) return 1;
         return io[(uint8_t)(addr - 0xFF00)];
     }
     else if (addr == 0xFFFF)
@@ -122,17 +121,71 @@ void MMU::Write(uint16_t addr, uint8_t val) {
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
         // io[addr - 0xFF00] = val;
 
+        if (addr == 0xFF00)
+            io[addr - 0xFF00] = val | 0b11000000; // unused bits
+
+        else if (addr == 0xFF02)
+            io[addr - 0xFF00] = val | 0b01111110; // unused bits
+
+        else if (addr == 0xFF03)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
 
         // stupid timers div and tima
-        if (addr == 0xFF04) {
+        else if (addr == 0xFF04) {
             io[0xFF04 - 0xFF00] = 0;
             io[0xFF05 - 0xFF00] = 0;
-        } else if (addr == 0xFF0F) {
+        }
+
+        else if (addr == 0xFF07)
+            io[addr - 0xFF00] = val | 0b11111000; // unused bits
+
+        else if (addr >= 0xFF08 && addr < 0xFF0F)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else if (addr == 0xFF0F) {
             if (Read(0xFFFF) > 0) {
-                io[addr - 0xFF00] = val;
+                io[addr - 0xFF00] = val | 0b11100000; // unused bits
             }
-        } else if (addr == 0xFF40)
+        }
+
+        else if (addr == 0xFF10)
+            io[addr - 0xFF00] = val | 0b10000000; // unused bits
+
+        else if (addr == 0xFF15)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else if (addr == 0xFF1A)
+            io[addr - 0xFF00] = val | 0b01111111; // unused bits
+
+        else if (addr == 0xFF1C)
+            io[addr - 0xFF00] = val | 0b10011111; // unused bits
+
+        else if (addr == 0xFF1F)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else if (addr == 0xFF20)
+            io[addr - 0xFF00] = val | 0b11000000; // unused bits
+
+        else if (addr == 0xFF23)
+            io[addr - 0xFF00] = val | 0b00111111; // unused bits
+
+        else if (addr == 0xFF26)
+            io[addr - 0xFF00] = val | 0b01110000; // unused bits
+
+        else if (addr == 0xFF27)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else if (addr == 0xFF28)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else if (addr == 0xFF29)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else if (addr == 0xFF40)
             io[addr - 0xFF00] = val;
+
+        else if (addr == 0xFF41)
+            io[addr - 0xFF00] = val | 0b10000000; // unused bits
 
         else if (addr == 0xFF42)
             io[addr - 0xFF00] = val;
@@ -143,7 +196,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         else if (addr == 0xFF46) {
             Copy(0xFE00, ((uint16_t)val) << 8, 160); // oam dma
 
-            io[addr - 0xFF00] = val;
+            // io[addr - 0xFF00] = val;
         }
 
         else if (addr == 0xFF47) { // setup bgp
@@ -168,9 +221,15 @@ void MMU::Write(uint16_t addr, uint8_t val) {
             }
 
             io[addr - 0xFF00] = val;
-        } else {
+        }
+
+        else if (addr >= 0xFF4C && addr < 0xFF80)
+            io[addr - 0xFF00] = val | 0b11111111; // unused bits
+
+        else {
             io[addr - 0xFF00] = val;
         }
+
     }
     else if (addr == 0xFFFF)
         interrupt = val;

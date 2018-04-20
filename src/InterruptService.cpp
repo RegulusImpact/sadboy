@@ -40,9 +40,6 @@ void InterruptService::CheckInterrupts() {
             interrupted = true;
             flags &= ~joyPadBit;
             JoyPadInterrupt();
-            printf("JOYPAD\n");
-            int qq;
-            std::cin >> qq;
         }
 
         // if bit3 (serialBit) is enable on IE and 0xFF0F
@@ -50,9 +47,6 @@ void InterruptService::CheckInterrupts() {
             interrupted = true;
             flags &= ~serialBit;
             SerialInterrupt();
-            printf("SERIAL\n");
-            int qq;
-            std::cin >> qq;
         }
 
         // if bit2 (timerBit) is enable on IE and 0xFF0F
@@ -60,9 +54,6 @@ void InterruptService::CheckInterrupts() {
             interrupted = true;
             flags &= ~timerBit;
             TimerInterrupt();
-            printf("TIMER\n");
-            int qq;
-            std::cin >> qq;
         }
 
         // if bit1 (lcdStatBit) is enable on IE and 0xFF0F
@@ -70,9 +61,6 @@ void InterruptService::CheckInterrupts() {
             interrupted = true;
             flags &= ~lcdStatBit;
             LCDStatInterrupt();
-            printf("LCDC\n");
-            int qq;
-            std::cin >> qq;
         }
 
         // if bit0 (vBlankBit) is enable on IE and 0xFF0F
@@ -80,7 +68,6 @@ void InterruptService::CheckInterrupts() {
             interrupted = true;
             flags &= ~vBlankBit;
             VBlankInterrupt();
-            printf("VBLANK\n");
         }
 
         if (interrupted) {

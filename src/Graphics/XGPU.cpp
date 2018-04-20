@@ -147,7 +147,7 @@ void XGPU::Sync() {
         lcdOperation = (control & Utils::BIT_7) != 0;
         windowTilemap = (control & Utils::BIT_6) != 0;
         windowDisplay = (control & Utils::BIT_5) != 0;
-        bgTile = (control & Utils::BIT_4) != 0;
+        bgTile = (control & Utils::BIT_4) == 0;
         bgMap = (control & Utils::BIT_3) != 0;
         spriteSize = (control & Utils::BIT_2) != 0;
         spriteDisplay = (control & Utils::BIT_1) != 0;
@@ -302,10 +302,10 @@ void XGPU::RenderScanline() {
 
     // where to render on canvas
     uint8_t color;
-    uint8_t tile = mmu->Read((bgmapOffset + lineOffset));
+    uint16_t tile = mmu->Read((bgmapOffset + lineOffset));
     size_t offset = MAX_X * scanline;
 
-    // if (bgTile && tile < 128) tile += 256;
+    if (bgTile && tile < 128) tile += 256;
 
     for (int ii = 0; ii < MAX_X; ii++) {
         color = mmu->tiles[tile][y][x];
@@ -318,7 +318,7 @@ void XGPU::RenderScanline() {
             x = 0;
             lineOffset = (lineOffset + 1) & 31;
             tile = mmu->Read((bgmapOffset + lineOffset));
-            // if (bgTile && tile < 128) tile += 256;
+            if (bgTile && tile < 128) tile += 256;
         }
     }
 }

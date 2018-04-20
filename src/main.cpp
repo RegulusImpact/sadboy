@@ -22,7 +22,7 @@
 #include "Graphics/XGPU.h"
 
 int main() {
-
+    /* BLARGGS CPU INSTRUCTION TESTS */
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/01-special.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/02-interrupts.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/03-op sp,hl.gb"); // -- Passed
@@ -35,12 +35,20 @@ int main() {
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/10-bit ops.gb"); // -- passed
     // Cartridge* cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/11-op a,(hl).gb"); // -- passed
 
-        // Cartridge* cart = new Cartridge("submodules/gb-test-roms/instr_timing/instr_timing.gb"); // -- failed
-        // Cartridge* cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
+    /* BLARGGS TIMING TESTS */
+    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/interrupt_time/interrupt_time.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/instr_timing/instr_timing.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/mem_timing/mem_timing.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("submodules/gb-test-roms/mem_timing/individual/01-read_timing.gb");
 
-        Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/div_write.gb"); // -- failed
-        // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/ie_push.gb"); // -- failed
-        // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/rapid_toggle.gb"); // -- failed
+    // The holy grail of tests :D
+    // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/div_write.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/ie_push.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/rapid_toggle.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
+    Cartridge* cart = new Cartridge("/home/regulus/Downloads/Dr. Mario (JU) (V1.0) [!].gb"); // -- failed
+
+
     if (!cart->IsLoaded()) {
         std::cout << "Cartridge is not loaded." << std::endl;
         exit(1);
@@ -56,17 +64,11 @@ int main() {
     uint32_t breakpointExtension = 0;
     int qq;
 
-    // frame limiter
-    double msBefore, msAfter;
-
     while (true) {
-        msBefore = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()
-        ).count();
-        cpu->Read(); // fetch, decode, execute
-
-        ts->Increment();
         is->CheckInterrupts();
+        ts->Increment();
+        ts->Increment();
+        cpu->Read(); // fetch, decode, execute
         ts->Increment();
 
         gpu->Step(cpu->GetCycles());
@@ -90,13 +92,6 @@ int main() {
         }
 
         counter++;
-        msAfter = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch()
-        ).count();
-        double timespan = msAfter - msBefore;
-        if (timespan < 16) {
-            // usleep((16 - timespan));
-        }
     }
 
     return 0;

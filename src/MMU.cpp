@@ -2,10 +2,8 @@
 
 #include "MMU.h"
 
-MMU::MMU(Cartridge* crt) {
-    for (uint32_t ii = 0; ii < 0x8000; ii++) {
-        cart[ii] = crt->Read(ii);
-    }
+MMU::MMU(MBC* m) {
+    mbc = m;
 
     palette[0] = 0;
     palette[1] = 1;
@@ -30,14 +28,15 @@ MMU::~MMU() {
 std::uint8_t MMU::Read(uint16_t addr) {
     // cartridge / bios
     if (addr <= 0x7FFF) {
-        if (readBios && addr < 0xFF)
+        if (readBios && addr < 0xFF){
             return bios[addr];
-
-        return cart[addr];
+        } else {
+            return mbc->Read(addr);
+        }
     }
     // sram
     else if (addr >= 0xA000 && addr <= 0xBFFF)
-        return sram[addr - 0xA000];
+        return mbc->Read(addr);
     // video ram
     else if (addr >= 0x8000 && addr <= 0x9FFF) {
         return vram[addr - 0x8000];
@@ -87,11 +86,11 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 
     // cartridge / bios
     // we don't write to cart
-    // if (addr <= 0x7FFF)
-    //     cart[addr] = val;
+    if (addr <= 0x7FFF)
+        mbc->Write(addr,val);
     // sram
     if (addr >= 0xA000 && addr <= 0xBFFF)
-        sram[addr - 0xA000] = val;
+        mbc->Write(addr,val);
     // video ram
     else if (addr >= 0x8000 && addr <= 0x9FFF) {
         vram[addr - 0x8000] = val;
@@ -109,8 +108,12 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         wram[addr - 0xE000] = val;
 
     // oam
-    else if (addr >= 0xFE00 && addr <= 0xFEFF)
+    else if (addr >= 0xFE00 && addr <= 0xFEFF) {
         oam[addr - 0xFE00] = val;
+        if (addr < 0xFEA0) {
+            UpdateSprite(addr, val);
+        }
+    }
 
     // io
     // this includes FFOO - user input joypad
@@ -141,7 +144,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
             io[addr - 0xFF00] = val;
 
         else if (addr == 0xFF46) {
-            Copy(0xFE00, ((uint16_t)val) << 8, 160); // oam dma
+            Copy(val); // oam dma
 
             // io[addr - 0xFF00] = val;
         }
@@ -179,21 +182,21 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         readBios = false;
     }
 
-    // oh christ what are we doing....
-    if (addr == 0xFF02) {// || addr == 0x0081) {
-        char c = Read(0xFF01);
-
-        if (c == '\n' || c == '\r') {
-            std::cout << std::endl;
-
-            // probably the title when the first newline occurs
-            enableDebugger = true;
-        } else if (c >= 0x20) {
-            //c[0] = Read(0xFF01);
-            std::cout << c;
-            // if (c == 'd') exit(1);
-        }
-    }
+    // // oh christ what are we doing....
+    // if (addr == 0xFF02) {// || addr == 0x0081) {
+    //     char c = Read(0xFF01);
+    //
+    //     if (c == '\n' || c == '\r') {
+    //         std::cout << std::endl;
+    //
+    //         // probably the title when the first newline occurs
+    //         enableDebugger = true;
+    //     } else if (c >= 0x20) {
+    //         //c[0] = Read(0xFF01);
+    //         std::cout << c;
+    //         // if (c == 'd') exit(1);
+    //     }
+    // }
 }
 
 // should literally be the opposite of the read16bit
@@ -211,9 +214,12 @@ void MMU::WriteTimers(uint16_t addr, uint16_t val) {
     }
 }
 
-void MMU::Copy(uint16_t destination, uint16_t source, size_t length) {
-    for (size_t ii = 0; ii < length; ii++) {
-        Write(destination + ii, Read(source + ii));
+void MMU::Copy(uint8_t val) {
+    uint16_t address = (val << 8);
+    for (size_t ii = 0; ii < 0xA0; ii++) {
+        uint8_t srcVal = Read((address + ii));
+        uint16_t destination = 0xFE00 + ii;
+        Write(destination, srcVal);
     }
 }
 
@@ -233,9 +239,48 @@ void MMU::UpdateTile(uint16_t address) {
 	}
 }
 
+void MMU::UpdateSprite(uint16_t address, uint8_t val) {
+	uint8_t obj = (address & 0xFF) >> 2;
+
+    if (obj < 40) {
+        // sprites are 4 bytes, we can only hold 40 sprites in oam
+        switch (obj & 3) {
+            case 0: {
+                sprites[obj][0] = val;// - 16; // y coordinate
+            }
+                break;
+            case 1: {
+                sprites[obj][1] = val;// - 8; // x coordinate
+            }
+                break;
+            case 2: {
+                sprites[obj][2] = val; // tile index
+            }
+                break;
+            case 3: {
+                // metadata regarding sprite display
+                uint8_t metadata = sprites[obj][3];
+                // metadata &= 0x0F; // we reset the upper nibble of the metadata
+                // bit 7 sprite / background priority 0: priority 1: none
+                metadata |= (Utils::BIT_7 & val);
+                // bit 6 y flip 0: normal 1: flip vertically
+                metadata |= (Utils::BIT_6 & val);
+                // bit 5 x flip 0: normal 1: flip horizontally
+                metadata |= (Utils::BIT_5 & val);
+                // bit 4 palette 0: obp[0] 1: obp[1]
+                metadata |= (Utils::BIT_4 & val);
+
+                sprites[obj][3] = metadata;
+            }
+                break;
+        }
+    }
+}
+
 void MMU::CheckMemory() {
-    if (Read(0xFF05) != 0x00) { std::cout << "failed on FF0F" << std::endl; exit(1); } // TIMA
-    if (Read(0xFF06) != 0x00) { std::cout << "failed on FF0F" << std::endl; exit(1); } // TMA
+    // if (Read(0xFF04) != 0xAB) { printf("failed on FF04 - %.2X\n", Read(0xFF04)); exit(1); } // TIMA
+    if (Read(0xFF05) != 0x00) { std::cout << "failed on FF05" << std::endl; exit(1); } // TIMA
+    if (Read(0xFF06) != 0x00) { std::cout << "failed on FF06" << std::endl; exit(1); } // TMA
     if (Read(0xFF07) != 0x00) { std::cout << "failed on FF07" << std::endl; exit(1); } // TAC
     // if (Read(0xFF10) != 0x80) { std::cout << "failed on FF10" << std::endl; exit(1); } // NR10
     // if (Read(0xFF11) != 0xBF) { std::cout << "failed on FF11" << std::endl; exit(1); } // NR11

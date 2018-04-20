@@ -13,7 +13,7 @@
 
 // classes
 #include "Graphics/iGPU.h"
-#include "Cartridge.h"
+#include "MBC.h"
 #include "Utils.h"
 
 class MMU {
@@ -33,7 +33,7 @@ private:
 // 1b
 
 // design from cinoop
-    std::uint8_t cart[0x8000];
+    MBC* mbc;
     std::uint8_t sram[0x2000];
     std::uint8_t io[0x100]; // this contains timers, joypad, gpu stuff
     std::uint8_t vram[0x2000];
@@ -84,7 +84,7 @@ private:
         }
     }
 public:
-    MMU(Cartridge* crt);
+    MMU(MBC* m);
     ~MMU();
 
     bool readBios;
@@ -97,6 +97,25 @@ public:
 
     std::uint8_t tiles[384][8][8];
 
+    // Sprite structure
+    // Byte 0 - y coordinate
+    // Byte 1 - x coordinate
+    // Byte 2 - Tile index
+    // Byte 3 - Additional Metadata
+        // Bit 7 - Background / Sprite Priority
+            // 0: Sprite Priority
+            // 1: Background Priority
+        // Bit 6 - Y flip
+            // 0: Normal
+            // 1: Flip Vertically
+        // Bit 5 - X flip
+            // 0: Normal
+            // 1: Flip Horizontally
+        // Bit 4 - Object palette
+            // 0: obp[0]
+            // 1: obp[1]
+    std::uint8_t sprites[40][4];
+
 // functions
     std::uint8_t Read(uint16_t addr);
     std::uint16_t Read16Bit(uint16_t addr);
@@ -104,9 +123,10 @@ public:
     void Write(uint16_t addr, uint16_t val);
     void WriteTimers(uint16_t addr, uint16_t val);
 
-    void Copy(uint16_t destination, uint16_t source, size_t length);
+    void Copy(uint8_t val);
 
     void UpdateTile(uint16_t address);
+    void UpdateSprite(uint16_t address, uint8_t val);
 
     void CheckMemory();
 };

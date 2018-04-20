@@ -6,7 +6,7 @@
 // size_t
 #include <cstddef>
 
-namespace Utils {    
+namespace Utils {
     static const uint8_t BIT_0 = (1 << 0);
     static const uint8_t BIT_1 = (1 << 1);
     static const uint8_t BIT_2 = (1 << 2);
@@ -23,6 +23,10 @@ namespace Utils {
         uint8_t out= (hi << 4 ) | lo;
 
         return out;
+    }
+
+    inline int32_t TwosComplement(uint32_t x) {
+        return static_cast<int32_t>(x);
     }
 }
  // namespace utils

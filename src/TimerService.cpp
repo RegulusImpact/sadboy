@@ -16,14 +16,13 @@ TimerService::~TimerService() {
 
 void TimerService::Increment() {
     uint16_t cycles = cpu->GetCycles();
+    // divider clock
+    divClock += cycles;
+    CheckDiv();
 
     // counter mess
     timaClock += cycles;
     CheckTima();
-
-    // divider clock
-    divClock += cycles;
-    CheckDiv();
 }
 
 void TimerService::CheckTima() {
@@ -47,15 +46,9 @@ void TimerService::CheckTima() {
                 break;
         }
 
-        bool trig = false;
-        while (timaClock >= clockSpeed) {
-            timaClock -= clockSpeed;
-            StepTima();
-            trig = true;
-        }
 
-        if (trig) {
-            timaClock = 0;
+        if (timaClock >= clockSpeed) {
+            StepTima();
         }
     }
 }
@@ -72,10 +65,13 @@ void TimerService::CheckDiv() {
 void TimerService::StepTima() {
     uint16_t tima = mmu->Read(timaAddr);
     tima++;
+    printf("%d\n", tima);
+    // timaClock = 0;
+    timaClock %= 256; // we want to keep ALL OF THE CLOCKS
 
-    if (tima > 255) {
+    if (tima >= 256) {
         tima = mmu->Read(moduloAddr);
-        cpu->AddCycles(4);
+        // cpu->AddCycles(4);
         TimaInterrupt();
     }
 
@@ -86,5 +82,5 @@ void TimerService::TimaInterrupt() {
     uint8_t flags = mmu->Read(InterruptService::IFLAGS);
     flags |= InterruptService::timerBit;
     mmu->Write(InterruptService::IFLAGS, flags);
-    cpu->AddCycles(4);
+    // cpu->AddCycles(4);
 }

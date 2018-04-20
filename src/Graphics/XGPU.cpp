@@ -84,21 +84,25 @@ void XGPU::init_palette() {
             case 0:
             {
                 rc = XAllocNamedColor(display, cmap, "Gray100", &palette[ii], &xc);
+                // rc = XAllocNamedColor(display, cmap, "Gray100", &palette[ii], &xc);
             }
                 break;
             case 1:
             {
                 rc = XAllocNamedColor(display, cmap, "Gray85", &palette[ii], &xc);
+                // rc = XAllocNamedColor(display, cmap, "Gray85", &palette[ii], &xc);
             }
                 break;
             case 2:
             {
                 rc = XAllocNamedColor(display, cmap, "Gray55", &palette[ii], &xc);
+                // rc = XAllocNamedColor(display, cmap, "Gray55", &palette[ii], &xc);
             }
                 break;
             case 3:
             {
                 rc = XAllocNamedColor(display, cmap, "Gray0", &palette[ii], &xc);
+                // rc = XAllocNamedColor(display, cmap, "Gray0", &palette[ii], &xc);
             }
                 break;
         }
@@ -110,8 +114,6 @@ void XGPU::init_palette() {
 
     XSetWindowColormap(display, window, cmap);
 }
-
-XGPU::XGPU(void): XGPU(new MMU(new Cartridge("cart/bgbtest.gb")), 1) { }
 
 XGPU::XGPU(MMU* m, uint8_t ws = 1){
     mmu = m;
@@ -131,14 +133,18 @@ uint8_t XGPU::GetScrollY()   { return mmu->Read(SCROLLY_ADDRESS); }
 uint8_t XGPU::GetScrollX()   { return mmu->Read(SCROLLX_ADDRESS); }
 uint8_t XGPU::GetScanline()  { return mmu->Read(SCANLINE_ADDRESS); }
 uint8_t XGPU::GetLYC()       { return mmu->Read(LYC_ADDRESS); }
+uint8_t XGPU::GetWindowY()   { return mmu->Read(WINDOWY_ADDRESS); }
+uint8_t XGPU::GetWindowX()   { return mmu->Read(WINDOWX_ADDRESS); }
 
 // Setters
-void XGPU::SetControl(uint8_t val)   { mmu->Write(CONTROL_ADDRESS, val); }
-void XGPU::SetLCDStat(uint8_t val)   { mmu->Write(STATUS_ADDRESS, val); }
-void XGPU::SetScrollY(uint8_t val)   { mmu->Write(SCROLLY_ADDRESS, val); }
-void XGPU::SetScrollX(uint8_t val)   { mmu->Write(SCROLLX_ADDRESS, val); }
-void XGPU::SetScanline(uint8_t val)  { mmu->Write(SCANLINE_ADDRESS, val); }
-void XGPU::SetLYC(uint8_t val)       { mmu->Write(LYC_ADDRESS, val); }
+void XGPU::SetControl(uint8_t val)  { mmu->Write(CONTROL_ADDRESS, val); }
+void XGPU::SetLCDStat(uint8_t val)  { mmu->Write(STATUS_ADDRESS, val); }
+void XGPU::SetScrollY(uint8_t val)  { mmu->Write(SCROLLY_ADDRESS, val); }
+void XGPU::SetScrollX(uint8_t val)  { mmu->Write(SCROLLX_ADDRESS, val); }
+void XGPU::SetScanline(uint8_t val) { mmu->Write(SCANLINE_ADDRESS, val); }
+void XGPU::SetLYC(uint8_t val)      { mmu->Write(LYC_ADDRESS, val); }
+void XGPU::SetWindowY(uint8_t val)  { mmu->Write(WINDOWY_ADDRESS, val); }
+void XGPU::SetWindowX(uint8_t val)  { mmu->Write(WINDOWX_ADDRESS, val); }
 
 // Special Getters
 void XGPU::Sync() {
@@ -147,7 +153,7 @@ void XGPU::Sync() {
         lcdOperation = (control & Utils::BIT_7) != 0;
         windowTilemap = (control & Utils::BIT_6) != 0;
         windowDisplay = (control & Utils::BIT_5) != 0;
-        bgTile = (control & Utils::BIT_4) != 0;
+        bgTile = (control & Utils::BIT_4) == 0; // 0 is signed mode
         bgMap = (control & Utils::BIT_3) != 0;
         spriteSize = (control & Utils::BIT_2) != 0;
         spriteDisplay = (control & Utils::BIT_1) != 0;
@@ -171,6 +177,12 @@ void XGPU::Sync() {
 
     // LYC
     lyc = GetLYC();
+
+    // Window Y
+    windowY = GetWindowY();
+
+    // Window X
+    windowX = GetWindowX();
 }
 // Special Setters
 void XGPU::SyncMemory() {
@@ -286,39 +298,113 @@ void XGPU::Step(uint32_t clockStep) {
 void XGPU::Hblank() {}
 
 void XGPU::RenderScanline() {
-    // which line of tiles to use in which map
-    uint16_t bgmapOffset = bgMap ? 0x1C00 : 0x1800;
-    bgmapOffset += (((scanline + scrollY) & 0xFF) >> 3) << 5;
-    bgmapOffset += 0x8000;
+    if (bgDisplay) {
+        // which line of tiles to use in which map
+        uint16_t bgmapOffset = bgMap ? 0x1C00 : 0x1800;
+        bgmapOffset += (((scanline + scrollY) & 0xFF) >> 3) << 5;
+        bgmapOffset += 0x8000;
 
-    // which tile
-    uint8_t lineOffset = (scrollX >> 3);
+        // which tile
+        uint8_t lineOffset = (scrollX >> 3);
 
-    // which line of pixels in the tile
-    uint8_t y = (scanline + scrollY) & 7;
+        // which line of pixels in the tile
+        uint8_t y = (scanline + scrollY) & 7;
 
-    // which in the tileline to start
-    uint8_t x = (scrollX & 7);
+        // which in the tileline to start
+        uint8_t x = (scrollX & 7);
 
-    // where to render on canvas
-    uint8_t color;
-    uint8_t tile = mmu->Read((bgmapOffset + lineOffset));
-    size_t offset = MAX_X * scanline;
+        // where to render on canvas
+        uint8_t color;
+        uint16_t tile = mmu->Read((bgmapOffset + lineOffset));
+        size_t offset = MAX_X * scanline;
 
-    // if (bgTile && tile < 128) tile += 256;
+        if (bgTile && (tile < 128)) tile += 256;
 
-    for (int ii = 0; ii < MAX_X; ii++) {
-        color = mmu->tiles[tile][y][x];
-        // color = mmu->bgp[color];
-        framebuffer[offset] = mmu->bgp[color];
-        offset++;
+        for (int ii = 0; ii < MAX_X; ii++) {
+            color = mmu->tiles[tile][y][x];
+            // color = mmu->bgp[color];
+            framebuffer[offset] = mmu->bgp[color];
+            offset++;
 
-        x++;
-        if (x == 8) {
-            x = 0;
-            lineOffset = (lineOffset + 1) & 31;
-            tile = mmu->Read((bgmapOffset + lineOffset));
-            // if (bgTile && tile < 128) tile += 256;
+            x++;
+            if (x == 8) {
+                x = 0;
+                lineOffset = (lineOffset + 1) & 31;
+                tile = mmu->Read((bgmapOffset + lineOffset));
+                if (bgTile && (tile < 128)) tile += 256;
+            }
+        }
+    }
+
+    if (windowDisplay) {
+        printf("WINDOW DISPLAY\n");
+        int qq;
+        std::cin >> qq;
+    }
+
+    if (spriteDisplay) {
+        uint16_t spriteStart = 0xFE00;
+        size_t offset = MAX_X * scanline;
+        uint8_t spriteLineCount = 0;
+        for (uint8_t sprite = 0; sprite < 40; sprite++) {
+            if(spriteLineCount >= 10) {
+                break;
+            }
+            bool rendered = false;
+            uint8_t index = sprite * 4;
+
+            uint16_t spriteIndex = spriteStart + index;
+            uint8_t y = mmu->Read(spriteIndex) - 16;
+            uint8_t x = mmu->Read(spriteIndex + 1) - 8;
+            uint8_t tileIndex = mmu->Read(spriteIndex + 2);
+            uint8_t attribs = mmu->Read(spriteIndex + 3);
+
+            bool priority = (attribs & Utils::BIT_7) != 0;
+            bool flipY = (attribs & Utils::BIT_6) != 0;
+            bool flipX = (attribs & Utils::BIT_5) != 0;
+            bool useAltPalette = (attribs & Utils::BIT_4) != 0;
+
+            uint8_t size = spriteSize ? 16 : 8;
+
+            if (scanline >= y && scanline < (y + size)) {
+                uint8_t currentline = 2;
+
+                currentline *= (flipY ? (y + size - scanline) : (scanline - y));
+
+                uint16_t address = 0xA000 + (tileIndex * 16) + currentline;
+
+                // the bytes are in order lo to high
+                uint8_t lo = mmu->Read((address));
+                uint8_t hi = mmu->Read((address + 1));
+
+                for (int8_t t = 0; t < 8; x++) {
+                    uint8_t color_bit = flipX ? (uint8_t)t : (uint8_t)(7 - t);
+
+                    uint8_t pal = useAltPalette ? 1 : 0;
+
+                    uint8_t x_pixel = (7 - t);
+                    uint8_t finalPixel = x + x_pixel;
+
+                    if (finalPixel > MAX_X) {
+                        break;
+                    }
+
+                    uint8_t p0 = ((hi >> color_bit) & 2) | ((lo >> (color_bit+1)) & 1);
+
+                    uint8_t color = mmu->obp[pal][p0];
+
+                    if (color != 0) {
+                        if (priority || framebuffer[offset+finalPixel] == 0) {
+                            framebuffer[offset+finalPixel] = color;
+                            rendered = true;
+                        }
+                    }
+                }
+
+                if (rendered) {
+                    spriteLineCount++;
+                }
+            }
         }
     }
 }
@@ -371,6 +457,34 @@ void XGPU::DumpTiles() {
     	tile++;
 	}
 }
+
+void XGPU::DumpSprites() {
+    uint16_t tileRow = 3;
+    uint16_t tileCol = 0;
+
+	for (uint16_t t = 0; t < 40; t++) {
+	    if (15 < tileCol) {
+	        tileRow++;
+	        tileCol = 0;
+	    }
+
+        uint8_t spriteIndex = mmu->sprites[t][2];
+        uint8_t spriteData = mmu->sprites[t][3];
+
+        // meta data broken out
+        uint8_t obp   = ((spriteData & Utils::BIT_4) != 0) ? 1 : 0;
+
+	    for (uint8_t y = 0; y < 8; y++) {
+    	    for (uint8_t x = 0; x < 8; x++) {
+    	        uint8_t p = mmu->tiles[spriteIndex][y][x];
+                Draw(mmu->obp[obp][p], (tileRow*9)+y, (tileCol*10)+x);
+    	    }
+    	}
+
+    	tileCol++;
+	}
+}
+
 void XGPU::DumpTileset() {
     /*
 

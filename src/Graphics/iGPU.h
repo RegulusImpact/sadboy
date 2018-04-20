@@ -93,6 +93,14 @@ protected:
     static const uint16_t LYC_ADDRESS = 0xFF45;
     uint8_t lyc;
 
+    // window y
+    static const uint16_t WINDOWY_ADDRESS = 0xFF4A;
+    uint8_t windowY;
+
+    // window x
+    static const uint16_t WINDOWX_ADDRESS = 0xFF4B;
+    uint8_t windowX;
+
 public:
     iGPU(){}
     virtual ~iGPU(){}
@@ -110,6 +118,8 @@ public:
     virtual std::uint8_t GetScrollY()=0;
     virtual std::uint8_t GetScanline()=0;
     virtual std::uint8_t GetLYC()=0;
+    virtual std::uint8_t GetWindowX()=0;
+    virtual std::uint8_t GetWindowY()=0;
 
     //std::uint8_t GetClocks()      { return clocks; }
 
@@ -128,11 +138,14 @@ public:
     virtual void SetScrollY(std::uint8_t val)=0;
     virtual void SetScanline(std::uint8_t val)=0;
     virtual void SetLYC(std::uint8_t val)=0;
+    virtual void SetWindowX(std::uint8_t val)=0;
+    virtual void SetWindowY(std::uint8_t val)=0;
 
     // drawing
     virtual void RenderFrame()=0;
     virtual void Draw(uint8_t color, uint8_t y, uint8_t x)=0;
     virtual void DumpTileset()=0;
+    virtual void DumpSprites()=0;
     virtual void DumpTiles()=0;
     //void SetClocks(std::uint8_t val)      { clocks = val; }
 

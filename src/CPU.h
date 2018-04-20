@@ -10,6 +10,7 @@
 #include <string.h>
 
 #include "MMU.h"
+#include "MBC.h"
 #include "Utils.h"
 
 /* Full and Half Carry */
@@ -74,7 +75,6 @@ private:
     FULL_REGISTERS FullRegisterParse(uint8_t opcode);
 
 public:
-    CPU();
     CPU(MMU* m);
     ~CPU();
 

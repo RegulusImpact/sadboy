@@ -1,12 +1,10 @@
 // CPU.cpp
 #include "CPU.h"
 
-CPU::CPU(void): CPU(new MMU(new Cartridge("cart/bgbtest.gb"))) { }
-
 CPU::CPU(MMU* m) {
     mmu = m;
 
-    IME = 0xFF;
+    IME = 0x00;
     halt = false;
 
     for (int i = 0; i < 8; i++) {

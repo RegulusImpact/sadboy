@@ -17,14 +17,10 @@ void InterruptService::DisableHalt() {
 
     // if any interrupt enable bit and corresponding flags are set
     // regardless of the IME, disable HALT
-    if (((ie & flags & vBlankBit)  > 0) ||
-        ((ie & flags & lcdStatBit) > 0) ||
-        ((ie & flags & timerBit)   > 0) ||
-        ((ie & flags & serialBit)  > 0) ||
-        ((ie & flags & joyPadBit)  > 0))
+    if ((ie & flags) != 0)
     {
         if (cpu->halt) {
-            cpu->AddCycles(4);
+            // cpu->AddCycles(4);
         }
 
         cpu->halt = false;
@@ -73,6 +69,7 @@ bool InterruptService::CheckInterrupts() {
 }
 
 void InterruptService::Dispatch() {
+    DisableHalt();
     if ((cpu->GetIME() != 0x00)) {
         switch (dispatch) {
             case vBlankBit: {

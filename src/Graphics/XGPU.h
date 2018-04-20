@@ -16,6 +16,7 @@
 #include "iGPU.h"
 
 // Other Classes
+#include "../MBC.h"
 #include "../MMU.h"
 #include "../Utils.h"
 #include "../InterruptService.h"
@@ -39,13 +40,13 @@ private:
 
     // functionality dependent
     MMU* mmu;
+    uint8_t spriteCount;
 
 void init_x();
 void close_x();
 void init_palette();
 
 public:
-    XGPU();
     XGPU(MMU* m, uint8_t ws);
     ~XGPU();
 
@@ -56,6 +57,8 @@ public:
     std::uint8_t GetScrollX();
     std::uint8_t GetScanline();
     std::uint8_t GetLYC();
+    std::uint8_t GetWindowY();
+    std::uint8_t GetWindowX();
 
     // Setters
     void SetControl(std::uint8_t val);
@@ -64,6 +67,8 @@ public:
     void SetScrollX(std::uint8_t val);
     void SetScanline(std::uint8_t val);
     void SetLYC(std::uint8_t val);
+    void SetWindowY(std::uint8_t val);
+    void SetWindowX(std::uint8_t val);
 
     void IncrementScanline();
     void ResetScanline();
@@ -86,6 +91,7 @@ public:
     void Draw(XColor color, uint8_t y, uint8_t x);
     void DumpTiles();
     void DumpTileset();
+    void DumpSprites();
 
 };
 

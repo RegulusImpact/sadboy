@@ -21,6 +21,23 @@ MMU::MMU(Cartridge* crt) {
     loadBootrom();
 }
 
+MMU::MMU(MBC* m) {
+    mbc = m;
+
+    palette[0] = 0;
+    palette[1] = 1;
+    palette[2] = 2;
+    palette[3] = 3;
+
+    readBios = true;
+    enableDebugger = false;
+
+    Write(0xFF00, (uint8_t)0x1);
+    Write(0xFF41, (uint8_t)3);
+
+    loadBootrom();
+}
+
 MMU::~MMU() {
     // https://stackoverflow.com/questions/24292194/g-gives-the-warning-message-deleting-array-in-virtual-destructor-what-does-th
     // delete[] RAM;
@@ -32,8 +49,8 @@ std::uint8_t MMU::Read(uint16_t addr) {
     if (addr <= 0x7FFF) {
         if (readBios && addr < 0xFF)
             return bios[addr];
-
-        return cart[addr];
+        else
+            return mbc->Read(addr);
     }
     // sram
     else if (addr >= 0xA000 && addr <= 0xBFFF)
@@ -86,7 +103,8 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 
     // cartridge / bios
     // we don't write to cart
-    // if (addr <= 0x7FFF)
+    if (addr <= 0x7FFF)
+        mbc->Write(addr, val);
     //     cart[addr] = val;
     // sram
     if (addr >= 0xA000 && addr <= 0xBFFF)

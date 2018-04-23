@@ -17,6 +17,7 @@
 #include "TimerService.h"
 
 #include "Cartridge.h"
+#include "MBC.h"
 
 #include "Graphics/iGPU.h"
 #include "Graphics/XGPU.h"
@@ -47,14 +48,18 @@ int main() {
     // Cartridge* cart = new Cartridge("/home/regulus/github/sadboy/test/rapid_toggle.gb"); // -- failed
     // Cartridge* cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
     Cartridge* cart = new Cartridge("/home/regulus/Downloads/Dr. Mario (JU) (V1.0) [!].gb"); // -- failed
-
+    // Cartridge* cart = new Cartridge("/home/r egulus/Downloads/unused_hwio-GS.gb"); // -- failed
+    // Cartridge* cart = new Cartridge("/home/regulus/Downloads/reg_f.gb"); // -- failed
 
     if (!cart->IsLoaded()) {
         std::cout << "Cartridge is not loaded." << std::endl;
         exit(1);
     }
 
-    MMU* mmu = new MMU(cart);
+    MBC* mbc = new MBC();
+    mbc->LoadCart("/home/regulus/Downloads/Dr. Mario (JU) (V1.0) [!].gb");
+    MMU* mmu = new MMU(mbc);
+    // MMU* mmu = new MMU(cart);
     CPU* cpu = new CPU(mmu);
     InterruptService* is = new InterruptService(cpu, mmu);
     TimerService* ts = new TimerService(cpu, mmu, is);
@@ -65,11 +70,10 @@ int main() {
     int qq;
 
     while (true) {
-        is->CheckInterrupts();
-        ts->Increment();
         ts->Increment();
         cpu->Read(); // fetch, decode, execute
         ts->Increment();
+        is->CheckInterrupts();
 
         gpu->Step(cpu->GetCycles());
 

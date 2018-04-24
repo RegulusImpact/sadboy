@@ -44,8 +44,11 @@ void init_x();
 void close_x();
 void init_palette();
 
+void renderBackground(uint8_t scanrow[MAX_X]);
+void renderWindows(uint8_t scanrow[MAX_X]);
+void renderSprites(uint8_t scanrow[MAX_X]);
+
 public:
-    XGPU();
     XGPU(MMU* m, uint8_t ws);
     ~XGPU();
 

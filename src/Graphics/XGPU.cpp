@@ -111,8 +111,6 @@ void XGPU::init_palette() {
     XSetWindowColormap(display, window, cmap);
 }
 
-XGPU::XGPU(void): XGPU(new MMU(new Cartridge("cart/bgbtest.gb")), 1) { }
-
 XGPU::XGPU(MMU* m, uint8_t ws = 1){
     mmu = m;
     windowScalar = ws;
@@ -122,7 +120,6 @@ XGPU::XGPU(MMU* m, uint8_t ws = 1){
 
 XGPU::~XGPU() {
     close_x();
-    delete mmu;
 }
 // Getters
 uint8_t XGPU::GetControl()   { return mmu->Read(CONTROL_ADDRESS); }
@@ -273,7 +270,7 @@ void XGPU::Step(uint32_t clockStep) {
                     TriggerLCDStat(Utils::BIT_5); // trigger oam-rams lcdc status interrupt
 
                     ResetScanline();
-                    //XFlush(display);
+                    // XFlush(display);
                 }
             }
         }
@@ -285,7 +282,8 @@ void XGPU::Step(uint32_t clockStep) {
 
 void XGPU::Hblank() {}
 
-void XGPU::RenderScanline() {
+
+void XGPU::renderBackground(uint8_t scanrow[MAX_X]) {
     // which line of tiles to use in which map
     uint16_t bgmapOffset = bgMap ? 0x1C00 : 0x1800;
     bgmapOffset += (((scanline + scrollY) & 0xFF) >> 3) << 5;
@@ -303,7 +301,7 @@ void XGPU::RenderScanline() {
     // where to render on canvas
     uint8_t color;
     uint16_t tile = mmu->Read((bgmapOffset + lineOffset));
-    size_t offset = MAX_X * scanline;
+    size_t offset = (MAX_X * scanline);
 
     if (bgTile && tile < 128) tile += 256;
 
@@ -311,6 +309,7 @@ void XGPU::RenderScanline() {
         color = mmu->tiles[tile][y][x];
         // color = mmu->bgp[color];
         framebuffer[offset] = mmu->bgp[color];
+        scanrow[ii] = color;
         offset++;
 
         x++;
@@ -321,6 +320,65 @@ void XGPU::RenderScanline() {
             if (bgTile && tile < 128) tile += 256;
         }
     }
+}
+
+void XGPU::renderWindows(uint8_t scanrow[MAX_X]) {
+
+}
+
+void XGPU::renderSprites(uint8_t scanrow[MAX_X]) {
+    uint8_t size = spriteSize ? 16 : 8;
+    for (size_t ii = 0; ii < 40; ii++) {
+        Sprite obj = mmu->sprites[ii];
+
+        if ((obj.GetY() <= scanline) && ((obj.GetY() + 8) > scanline)) {// possible error zone
+            uint8_t pal = obj.GetPalette();
+
+            size_t canvasOffset = (MAX_X * scanline) + obj.GetX();
+
+            //int8_t tilerow = obj.GetFlipY() ? (7 - (scanline - obj.GetY())) : (scanline - obj.GetY());
+            uint8_t* tilerow;
+
+            if (obj.GetFlipY()) {
+                tilerow = mmu->tiles[obj.GetTile()][( 7 - ( scanline - obj.GetY() ) )];
+            } else {
+                tilerow = mmu->tiles[obj.GetTile()][(scanline - obj.GetY())];
+            }
+
+            uint8_t color;
+
+            for(int x = 0; x < 8; x++) {
+                int8_t actualX = obj.GetFlipX() ? (7 - x) : (x);
+                color = tilerow[actualX];
+                if (((obj.GetX() + x) >= 0) &&
+                    ((obj.GetX() + x) < MAX_X) &&
+                    (color != 0) &&
+                    ( (obj.GetPriority()) || (scanrow[(obj.GetX() + x)] == 0) ) // canvasoffset already includes the obj.GetX()
+                ) {
+                    framebuffer[canvasOffset] = mmu->obp[pal][color];
+                }
+                canvasOffset++;
+            }
+        }
+    }
+}
+
+void XGPU::RenderScanline() {
+    uint8_t scanrow[MAX_X];
+    renderBackground(scanrow);
+    if (bgDisplay) {
+    }
+
+    // if (windowDisplay) {
+    //     renderWindows(scanrow);
+    // }
+    //
+    if (spriteDisplay) {
+        renderSprites(scanrow);
+    }
+
+    // uint16_t start = MAX_X * scanline;
+    // std::copy((scanrow), (scanrow+MAX_X), (framebuffer + start));
 }
 
 void XGPU::RenderFrame() {

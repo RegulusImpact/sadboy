@@ -2,7 +2,9 @@
 
 #include "MMU.h"
 
-MMU::MMU(Cartridge* crt) {
+MMU::MMU(Cartridge* crt):
+sprites(40, Sprite(-1))
+{
     for (uint32_t ii = 0; ii < 0x8000; ii++) {
         cart[ii] = crt->Read(ii);
     }
@@ -21,36 +23,13 @@ MMU::MMU(Cartridge* crt) {
     loadBootrom();
 }
 
-MMU::MMU(MBC* m) {
-    mbc = m;
-
-    palette[0] = 0;
-    palette[1] = 1;
-    palette[2] = 2;
-    palette[3] = 3;
-
-    readBios = true;
-    enableDebugger = false;
-
-    Write(0xFF00, (uint8_t)0x1);
-    Write(0xFF41, (uint8_t)3);
-
-    loadBootrom();
-}
-
-MMU::~MMU() {
-    // https://stackoverflow.com/questions/24292194/g-gives-the-warning-message-deleting-array-in-virtual-destructor-what-does-th
-    // delete[] RAM;
-}
-
-
 std::uint8_t MMU::Read(uint16_t addr) {
     // cartridge / bios
     if (addr <= 0x7FFF) {
         if (readBios && addr < 0xFF)
             return bios[addr];
         else
-            return mbc->Read(addr);
+            return cart[addr];
     }
     // sram
     else if (addr >= 0xA000 && addr <= 0xBFFF)
@@ -103,8 +82,6 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 
     // cartridge / bios
     // we don't write to cart
-    if (addr <= 0x7FFF)
-        mbc->Write(addr, val);
     //     cart[addr] = val;
     // sram
     if (addr >= 0xA000 && addr <= 0xBFFF)
@@ -126,8 +103,11 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         wram[addr - 0xE000] = val;
 
     // oam
-    else if (addr >= 0xFE00 && addr <= 0xFEFF)
-        oam[addr - 0xFE00] = val;
+    else if (addr >= 0xFE00 && addr <= 0xFEFF){
+        uint8_t effectiveAddress = (addr - 0xFE00);
+        oam[effectiveAddress] = val;
+        UpdateSprite(effectiveAddress, val);
+    }
 
     // io
     // this includes FFOO - user input joypad
@@ -136,6 +116,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
 
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         hram[addr - 0xFF80] = val;
+
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
         // io[addr - 0xFF00] = val;
 
@@ -212,9 +193,12 @@ void MMU::Write(uint16_t addr, uint8_t val) {
             io[addr - 0xFF00] = val;
 
         else if (addr == 0xFF46) {
-            Copy(0xFE00, ((uint16_t)val) << 8, 160); // oam dma
-
-            // io[addr - 0xFF00] = val;
+            uint32_t eAddr = val << 8;
+            for (size_t ii = 0; ii < 160; ii++) {
+                uint16_t oamAddr = (0xFE00 + ii);
+                uint8_t wramVal = Read(eAddr + ii);
+                Write(oamAddr, wramVal);
+            }
         }
 
         else if (addr == 0xFF47) { // setup bgp
@@ -255,22 +239,6 @@ void MMU::Write(uint16_t addr, uint8_t val) {
     if (0xFF50 == addr && 1 == val) {
         readBios = false;
     }
-
-    // oh christ what are we doing....
-    if (addr == 0xFF02) {// || addr == 0x0081) {
-        char c = Read(0xFF01);
-
-        if (c == '\n' || c == '\r') {
-            std::cout << std::endl;
-
-            // probably the title when the first newline occurs
-            enableDebugger = true;
-        } else if (c >= 0x20) {
-            //c[0] = Read(0xFF01);
-            std::cout << c;
-            // if (c == 'd') exit(1);
-        }
-    }
 }
 
 // should literally be the opposite of the read16bit
@@ -308,6 +276,39 @@ void MMU::UpdateTile(uint16_t address) {
 		tiles[tile][y][x] = ((vram[address] & bitIndex)     != 0 ? 1 : 0) +
                             ((vram[address + 1] & bitIndex) != 0 ? 2 : 0);
 	}
+}
+
+
+void MMU::UpdateSprite(uint8_t address, uint8_t val) {
+    uint8_t obj = address >> 2;
+    if (obj < 40) {
+        switch (address & 3) {
+            case 0: {
+                int16_t y = val - 16;
+                sprites[obj].SetY(y);
+                // printf("\tset sprite (x%.4X) y from %d to %d | check: %s\n",address,oldy,y, (sprites[obj].GetY() == y) ? "true" : "false");
+            }
+                break;
+            case 1: {
+                int16_t x = val - 8;
+                sprites[obj].SetX(x);
+                // printf("\tset sprite (x%.4X) x from %d to %d | check: %s\n",address,oldx,x, (sprites[obj].GetX() == x) ? "true" : "false");
+            }
+                break;
+            case 2: {
+                sprites[obj].SetTile(val);
+                // printf("\tset sprite (x%.4X) x from %.4X to %.4X | check: %s\n",address,tile,val, (sprites[obj].GetX() == val) ? "true" : "false");
+            }
+                break;
+            case 3: {
+                sprites[obj].SetPalette ((val & 0x10) != 0 ? 1 : 0);
+                sprites[obj].SetFlipX   ((val & 0x20) != 0);
+                sprites[obj].SetFlipY   ((val & 0x40) != 0);
+                sprites[obj].SetPriority((val & 0x80) == 0);
+            }
+                break;
+        }
+    }
 }
 
 void MMU::CheckMemory() {

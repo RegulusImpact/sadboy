@@ -1,8 +1,6 @@
 // CPU.cpp
 #include "CPU.h"
 
-CPU::CPU(void): CPU(new MMU(new Cartridge("cart/bgbtest.gb"))) { }
-
 CPU::CPU(MMU* m) {
     mmu = m;
 
@@ -16,12 +14,6 @@ CPU::CPU(MMU* m) {
     programCounter = 0;
     stackPointer = 0;
     cycles = 0;
-}
-
-CPU::~CPU(void) {
-    // https://stackoverflow.com/questions/24292194/g-gives-the-warning-message-deleting-array-in-virtual-destructor-what-does-th
-    // delete[] regs;
-    delete mmu;
 }
 
 std::uint16_t CPU::Get(REGISTERS r) {

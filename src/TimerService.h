@@ -44,7 +44,6 @@ private:
 
 public:
     TimerService(CPU* c, MMU* m, InterruptService* i);
-    ~TimerService();
 
     void Increment(); // increment our clock
     void CheckTima();

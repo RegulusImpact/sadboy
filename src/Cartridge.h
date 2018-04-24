@@ -34,7 +34,6 @@ public:
     bool destinationCode; // 0x14A - true = nonJP
 
     Cartridge(std::string fileName);
-    ~Cartridge();
 
     void LoadFile();
     void LoadHeader();

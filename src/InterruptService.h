@@ -31,7 +31,6 @@ public:
     static const uint16_t  joyPadISR = 0x0060;
 
     InterruptService(CPU* c, MMU* m);
-    ~InterruptService();
 
     void DisableHalt();
     void CheckInterrupts();

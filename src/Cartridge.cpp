@@ -12,10 +12,6 @@ Cartridge::Cartridge(std::string file) {
     }
 }
 
-Cartridge::~Cartridge() {
-    delete[] rom;
-}
-
 void Cartridge::LoadFile() {
     std::FILE* file;
     file = fopen (filePath.c_str() , "rb");

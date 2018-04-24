@@ -8,12 +8,6 @@ TimerService::TimerService(CPU* c, MMU* m, InterruptService* i) {
     is = i;
 }
 
-TimerService::~TimerService() {
-    delete is;
-    delete cpu;
-    delete mmu;
-}
-
 void TimerService::Increment() {
     uint16_t cycles = cpu->GetCycles();
 

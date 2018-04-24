@@ -74,9 +74,7 @@ private:
     FULL_REGISTERS FullRegisterParse(uint8_t opcode);
 
 public:
-    CPU();
     CPU(MMU* m);
-    ~CPU();
 
     std::uint16_t programCounter;
     std::uint16_t stackPointer;

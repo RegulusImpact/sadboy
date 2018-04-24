@@ -6,11 +6,6 @@ InterruptService::InterruptService(CPU* c, MMU* m) {
     mmu = m;
 }
 
-InterruptService::~InterruptService() {
-    delete cpu;
-    delete mmu;
-}
-
 void InterruptService::DisableHalt() {
     uint8_t ie = mmu->Read(IE);
     uint8_t flags = mmu->Read(IFLAGS);

@@ -48,7 +48,7 @@ int main() {
     // cart = new Cartridge("/home/regulus/github/sadboy/test/rapid_toggle.gb"); // -- failed
     cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/pokebluejp.gb"); // -- failed
-    // cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/drmario.gb");
+    // cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/drmario.gb"); // -- graphical pass
     // cart = new Cartridge("/home/regulus/Downloads/reg_f.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/Downloads/unused_hwio-GS.gb"); // -- failed
 
@@ -65,11 +65,11 @@ int main() {
 
     uint32_t counter = 0;
     while (true) {
-        // is->CheckInterrupts();
+        is->CheckInterrupts();
         cpu->Read(); // fetch, decode, execute
 
         gpu->Step(cpu->GetCycles());
-        // ts->Increment();
+        ts->Increment();
 
         if (0x0100 == cpu->programCounter && mmu->readBios) {
             cpu->CheckRegisters();

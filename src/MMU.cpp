@@ -17,7 +17,7 @@ sprites(40, Sprite(-1))
     readBios = true;
     enableDebugger = false;
 
-    Write(0xFF00, (uint8_t)0x1);
+    Write(0xFF00, (uint8_t)0xFF);
     Write(0xFF41, (uint8_t)3);
 
     loadBootrom();
@@ -59,6 +59,7 @@ std::uint8_t MMU::Read(uint16_t addr) {
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         return hram[addr - 0xFF80];
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
+        if(addr == 0xFF00) return 0x1;
         return io[(uint8_t)(addr - 0xFF00)];
     }
     else if (addr == 0xFFFF)

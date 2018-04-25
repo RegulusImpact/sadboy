@@ -60,7 +60,7 @@ private:
     }
 
 public:
-    MMU(Cartridge* crt);
+    MMU(Cartridge& crt);
 
     bool readBios;
     bool enableDebugger;

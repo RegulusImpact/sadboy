@@ -2,11 +2,11 @@
 
 #include "MMU.h"
 
-MMU::MMU(Cartridge* crt):
+MMU::MMU(Cartridge& crt):
 sprites(40, Sprite(-1))
 {
     for (uint32_t ii = 0; ii < 0x8000; ii++) {
-        cart[ii] = crt->Read(ii);
+        cart[ii] = crt.Read(ii);
     }
 
     palette[0] = 0;
@@ -59,7 +59,6 @@ std::uint8_t MMU::Read(uint16_t addr) {
     else if (addr >= 0xFF80 && addr <= 0xFFFE)
         return hram[addr - 0xFF80];
     else if (addr >= 0xFF00 && addr <= 0xFF7F) {
-        if(addr == 0xFF00) return 0x1;
         return io[(uint8_t)(addr - 0xFF00)];
     }
     else if (addr == 0xFFFF)
@@ -122,7 +121,7 @@ void MMU::Write(uint16_t addr, uint8_t val) {
         // io[addr - 0xFF00] = val;
 
         if (addr == 0xFF00)
-            io[addr - 0xFF00] = val | 0b11000000; // unused bits
+            io[addr - 0xFF00] = val | 0b11000000; // unused bits; FF00 is readonly
 
         else if (addr == 0xFF02)
             io[addr - 0xFF00] = val | 0b01111110; // unused bits

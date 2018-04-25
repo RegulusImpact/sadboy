@@ -2,20 +2,11 @@
 #ifndef XGPU_H
 #define XGPU_H
 
-// uintX_t
-#include <cstdint>
-// size_t
-#include <cstddef>
-
-// X11 Support
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include <X11/Xos.h>
-
 // Interfaces
 #include "iGPU.h"
 
 // Other Classes
+#include "DisplayManager.h"
 #include "../MMU.h"
 #include "../Utils.h"
 #include "../InterruptService.h"
@@ -26,30 +17,16 @@
 class XGPU: public iGPU {
 
 private:
-    // implementation specific
-    Display* display;
-    int screen;
-    Window window;
-    GC gc;
-    Colormap cmap;
-    uint32_t black, white;
-
-    XColor palette[4];
-    uint8_t windowScalar;
-
     // functionality dependent
     MMU* mmu;
+    DisplayManager* dm;
 
-void init_x();
-void close_x();
-void init_palette();
-
-void renderBackground(uint8_t scanrow[MAX_X]);
-void renderWindows(uint8_t scanrow[MAX_X]);
-void renderSprites(uint8_t scanrow[MAX_X]);
+void renderBackground(uint8_t scanrow[Utils::MAX_X]);
+void renderWindows(uint8_t scanrow[Utils::MAX_X]);
+void renderSprites(uint8_t scanrow[Utils::MAX_X]);
 
 public:
-    XGPU(MMU* m, uint8_t ws);
+    XGPU(MMU* m, DisplayManager* d);
     ~XGPU();
 
     // Getters
@@ -86,7 +63,6 @@ public:
 
     void RenderFrame();
     void Draw(uint8_t color, uint8_t y, uint8_t x);
-    void Draw(XColor color, uint8_t y, uint8_t x);
     void DumpTiles();
     void DumpTileset();
 

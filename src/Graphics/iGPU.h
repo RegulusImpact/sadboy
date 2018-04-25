@@ -6,11 +6,11 @@
 // size_t
 #include <cstddef>
 
+#include "../Utils.h"
+
 class iGPU {
 protected:
     // internal reference variables
-    static const uint8_t MAX_Y = 144;
-    static const uint8_t MAX_X = 160;
 
     enum GPU_MODE {
         OAM = 0b10,
@@ -21,7 +21,7 @@ protected:
 
     // internal variables
     uint32_t clocks;
-    uint8_t framebuffer[(MAX_X*MAX_Y)];
+    uint8_t framebuffer[(Utils::MAX_X*Utils::MAX_Y)];
 
     // local variables used to sync to and from memory
     // control

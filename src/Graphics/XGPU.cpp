@@ -2,125 +2,13 @@
 
 #include "XGPU.h"
 
-void XGPU::init_x() {
-    // setup up the display variables
-    display = XOpenDisplay((char*)0);
-
-    if (display == NULL) {
-        std::cerr << "X could not open display. Make sure the DISPLAY environment variable is configured." << std::endl;
-        std::cerr << "E.g. DISPLAY:0" << std::endl;
-        exit(1);
-    }
-
-    screen = XDefaultScreen(display);
-
-    black = BlackPixel(display, screen);
-    white = WhitePixel(display, screen);
-
-    // create the window
-    window = XCreateSimpleWindow(
-        display,
-        DefaultRootWindow(display),
-        0,
-        0,
-        (windowScalar * MAX_X), // 200 wide
-        (windowScalar * MAX_Y), // 300 down
-        5,
-        white, // foreground white
-        black // background black
-    );
-
-    // set window properties
-    XSetStandardProperties(
-        display,
-        window,
-        "Sadboy", // Title maximized
-        "Emulator", // Title minimized
-        None,
-        NULL,
-        0,
-        NULL
-    );
-
-    // set inputs
-    XSelectInput(display, window, ExposureMask|ButtonPressMask|KeyPressMask);
-
-    // create graphics context
-    gc = XCreateGC(display, window, 0, 0);
-
-    // set the fore/back ground colors currently in use in the window
-    XSetForeground(display, gc, white);
-    XSetBackground(display, gc, white);
-
-    // clear the window and bring to foreground
-    XClearWindow(display, window);
-    XMapRaised(display, window);
-
-    XDrawString(display, window, gc, 5, 5,"Sadboy world!", strlen("Sadboy world!"));
-}
-
-void XGPU::close_x() {
-    XFreeGC(display, gc);
-    XDestroyWindow(display, window);
-    XCloseDisplay(display);
-}
-
-void XGPU::init_palette() {
-    Visual* visual = DefaultVisual(display, screen);
-
-    cmap = XCreateColormap(
-        display,
-        RootWindow(display, screen),
-        visual,
-        AllocNone
-    );
-
-    for (int ii = 0; ii < 4; ii++) {
-        uint8_t mmuColor = mmu->palette[ii];
-        Status rc;
-
-        switch (mmuColor) {
-            XColor xc;
-            case 0:
-            {
-                rc = XAllocNamedColor(display, cmap, "Gray100", &palette[ii], &xc);
-            }
-                break;
-            case 1:
-            {
-                rc = XAllocNamedColor(display, cmap, "Gray85", &palette[ii], &xc);
-            }
-                break;
-            case 2:
-            {
-                rc = XAllocNamedColor(display, cmap, "Gray55", &palette[ii], &xc);
-            }
-                break;
-            case 3:
-            {
-                rc = XAllocNamedColor(display, cmap, "Gray0", &palette[ii], &xc);
-            }
-                break;
-        }
-
-        if (rc == 0) {
-            printf("Color Alloc [%d] failed.\n", ii);
-        }
-    }
-
-    XSetWindowColormap(display, window, cmap);
-}
-
-XGPU::XGPU(MMU* m, uint8_t ws = 1){
+XGPU::XGPU(MMU* m, DisplayManager* d) {
     mmu = m;
-    windowScalar = ws;
-    init_x();
-    init_palette();
+    dm = d;
 }
 
-XGPU::~XGPU() {
-    close_x();
-}
+XGPU::~XGPU() {}
+
 // Getters
 uint8_t XGPU::GetControl()   { return mmu->Read(CONTROL_ADDRESS); }
 uint8_t XGPU::GetLCDStat()   { return mmu->Read(STATUS_ADDRESS); }
@@ -283,7 +171,7 @@ void XGPU::Step(uint32_t clockStep) {
 void XGPU::Hblank() {}
 
 
-void XGPU::renderBackground(uint8_t scanrow[MAX_X]) {
+void XGPU::renderBackground(uint8_t scanrow[Utils::MAX_X]) {
     // which line of tiles to use in which map
     uint16_t bgmapOffset = bgMap ? 0x1C00 : 0x1800;
     bgmapOffset += (((scanline + scrollY) & 0xFF) >> 3) << 5;
@@ -301,11 +189,11 @@ void XGPU::renderBackground(uint8_t scanrow[MAX_X]) {
     // where to render on canvas
     uint8_t color;
     uint16_t tile = mmu->Read((bgmapOffset + lineOffset));
-    size_t offset = (MAX_X * scanline);
+    size_t offset = (Utils::MAX_X * scanline);
 
     if (bgTile && tile < 128) tile += 256;
 
-    for (int ii = 0; ii < MAX_X; ii++) {
+    for (int ii = 0; ii < Utils::MAX_X; ii++) {
         color = mmu->tiles[tile][y][x];
         // color = mmu->bgp[color];
         framebuffer[offset] = mmu->bgp[color];
@@ -322,11 +210,11 @@ void XGPU::renderBackground(uint8_t scanrow[MAX_X]) {
     }
 }
 
-void XGPU::renderWindows(uint8_t scanrow[MAX_X]) {
+void XGPU::renderWindows(uint8_t scanrow[Utils::MAX_X]) {
 
 }
 
-void XGPU::renderSprites(uint8_t scanrow[MAX_X]) {
+void XGPU::renderSprites(uint8_t scanrow[Utils::MAX_X]) {
     uint8_t size = spriteSize ? 16 : 8;
     for (size_t ii = 0; ii < 40; ii++) {
         Sprite obj = mmu->sprites[ii];
@@ -334,7 +222,7 @@ void XGPU::renderSprites(uint8_t scanrow[MAX_X]) {
         if ((obj.GetY() <= scanline) && ((obj.GetY() + 8) > scanline)) {// possible error zone
             uint8_t pal = obj.GetPalette();
 
-            size_t canvasOffset = (MAX_X * scanline) + obj.GetX();
+            size_t canvasOffset = (Utils::MAX_X * scanline) + obj.GetX();
 
             //int8_t tilerow = obj.GetFlipY() ? (7 - (scanline - obj.GetY())) : (scanline - obj.GetY());
             uint8_t* tilerow;
@@ -351,7 +239,7 @@ void XGPU::renderSprites(uint8_t scanrow[MAX_X]) {
                 int8_t actualX = obj.GetFlipX() ? (7 - x) : (x);
                 color = tilerow[actualX];
                 if (((obj.GetX() + x) >= 0) &&
-                    ((obj.GetX() + x) < MAX_X) &&
+                    ((obj.GetX() + x) < Utils::MAX_X) &&
                     (color != 0) &&
                     ( (obj.GetPriority()) || (scanrow[(obj.GetX() + x)] == 0) ) // canvasoffset already includes the obj.GetX()
                 ) {
@@ -364,27 +252,26 @@ void XGPU::renderSprites(uint8_t scanrow[MAX_X]) {
 }
 
 void XGPU::RenderScanline() {
-    uint8_t scanrow[MAX_X];
-    renderBackground(scanrow);
-    if (bgDisplay) {
-    }
+    if (lcdOperation) {
+        uint8_t scanrow[Utils::MAX_X];
+        if (bgDisplay) {
+            renderBackground(scanrow);
+        }
 
-    // if (windowDisplay) {
-    //     renderWindows(scanrow);
-    // }
-    //
-    if (spriteDisplay) {
-        renderSprites(scanrow);
-    }
+        if (windowDisplay) {
+            renderWindows(scanrow);
+        }
 
-    // uint16_t start = MAX_X * scanline;
-    // std::copy((scanrow), (scanrow+MAX_X), (framebuffer + start));
+        if (spriteDisplay) {
+            renderSprites(scanrow);
+        }
+    }
 }
 
 void XGPU::RenderFrame() {
-    for (int y = 0; y < MAX_Y; y++) {
-        for (int x = 0; x < MAX_X; x++) {
-            size_t offset = (MAX_X * y) + x;
+    for (int y = 0; y < Utils::MAX_Y; y++) {
+        for (int x = 0; x < Utils::MAX_X; x++) {
+            size_t offset = (Utils::MAX_X * y) + x;
             uint8_t color = framebuffer[offset];
             Draw(color, y, x);
         }
@@ -392,21 +279,7 @@ void XGPU::RenderFrame() {
 }
 
 void XGPU::Draw(uint8_t color, uint8_t y, uint8_t x) {
-    // printf("color: %d\n", color);
-    Draw(palette[color], y, x);
-}
-
-void XGPU::Draw(XColor color, uint8_t y, uint8_t x) {
-    XSetForeground(display, gc, color.pixel);
-    XFillRectangle(
-        display,
-        window,
-        gc,
-        (x*windowScalar), // x
-        (y*windowScalar), // y
-        (1*windowScalar), // width
-        (1*windowScalar) // height
-    );
+    dm->Draw(color, y, x);
 }
 
 void XGPU::DumpTiles() {
@@ -460,27 +333,7 @@ void XGPU::DumpTileset() {
     uint16_t tileRowOffset = 0;
     uint16_t maxVRAM = 0x2000;
     uint16_t vramStart = 0x8000;
-    // pokemon sprite test
     // FF 00 7E FF      85 81 89 83     93 85 A5 8B    C9 97 7E FF
-    // mmu->Write(vramStart, (uint8_t)0xFF);
-    // mmu->Write(vramStart+1, (uint8_t)0x00);
-    // mmu->Write(vramStart+2, (uint8_t)0x7E);
-    // mmu->Write(vramStart+3, (uint8_t)0xFF);
-
-    // mmu->Write(vramStart+4, (uint8_t)0x85);
-    // mmu->Write(vramStart+5, (uint8_t)0x81);
-    // mmu->Write(vramStart+6, (uint8_t)0x89);
-    // mmu->Write(vramStart+7, (uint8_t)0x83);
-
-    // mmu->Write(vramStart+8, (uint8_t)0x93);
-    // mmu->Write(vramStart+9, (uint8_t)0x85);
-    // mmu->Write(vramStart+10, (uint8_t)0xA5);
-    // mmu->Write(vramStart+11, (uint8_t)0x8B);
-
-    // mmu->Write(vramStart+12, (uint8_t)0xC9);
-    // mmu->Write(vramStart+13, (uint8_t)0x97);
-    // mmu->Write(vramStart+14, (uint8_t)0x7E);
-    // mmu->Write(vramStart+15, (uint8_t)0xFF);
 
     for (uint16_t ii = 0; ii < maxVRAM; ii += 2) {
         // ii iterates through every byte in vram

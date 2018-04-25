@@ -18,11 +18,13 @@
 
 #include "Cartridge.h"
 
+#include "Graphics/DisplayManager.h"
 #include "Graphics/iGPU.h"
 #include "Graphics/XGPU.h"
 
+#include "Joypad.h"
+
 int main() {
-    Cartridge* cart;
     /* BLARGGS CPU INSTRUCTION TESTS */
     // cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/01-special.gb"); // -- passed
     // cart = new Cartridge("submodules/gb-test-roms/cpu_instrs/individual/02-interrupts.gb"); // -- passed
@@ -46,35 +48,39 @@ int main() {
     // cart = new Cartridge("/home/regulus/github/sadboy/test/div_write.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/github/sadboy/test/ie_push.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/github/sadboy/test/rapid_toggle.gb"); // -- failed
-    cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/pokebluejp.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/github/java-gb/src/main/resources/drmario.gb"); // -- graphical pass
     // cart = new Cartridge("/home/regulus/Downloads/reg_f.gb"); // -- failed
     // cart = new Cartridge("/home/regulus/Downloads/unused_hwio-GS.gb"); // -- failed
+    Cartridge cart("/home/regulus/github/java-gb/src/main/resources/tetris.gb"); // -- failed
 
-    if (!cart->IsLoaded()) {
+    if (!cart.IsLoaded()) {
         std::cout << "Cartridge is not loaded." << std::endl;
         exit(1);
     }
 
-    MMU* mmu = new MMU(cart);
-    CPU* cpu = new CPU(mmu);
-    InterruptService* is = new InterruptService(cpu, mmu);
-    TimerService* ts = new TimerService(cpu, mmu, is);
-    iGPU* gpu = new XGPU(mmu, 3);
+    MMU mmu(cart);
+    DisplayManager dm(&mmu, 3);
+    CPU cpu(&mmu);
+    InterruptService is(&cpu, &mmu);
+    TimerService ts(&cpu, &mmu, &is);
+    iGPU* gpu = new XGPU(&mmu, &dm);
+    Joypad jp(&mmu, &dm);
 
     uint32_t counter = 0;
     while (true) {
-        is->CheckInterrupts();
-        cpu->Read(); // fetch, decode, execute
+        
+        jp.CheckKeyInput();
+        is.CheckInterrupts();
+        cpu.Read(); // fetch, decode, execute
 
-        gpu->Step(cpu->GetCycles());
-        ts->Increment();
+        gpu->Step(cpu.GetCycles());
+        ts.Increment();
 
-        if (0x0100 == cpu->programCounter && mmu->readBios) {
-            cpu->CheckRegisters();
-            mmu->CheckMemory();
-            mmu->readBios = false;
+        if (0x0100 == cpu.programCounter && mmu.readBios) {
+            cpu.CheckRegisters();
+            mmu.CheckMemory();
+            mmu.readBios = false;
         }
 
         counter++;

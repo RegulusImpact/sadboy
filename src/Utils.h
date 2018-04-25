@@ -6,7 +6,10 @@
 // size_t
 #include <cstddef>
 
-namespace Utils {    
+namespace Utils {
+    static const uint8_t MAX_Y = 144;
+    static const uint8_t MAX_X = 160;
+    
     static const uint8_t BIT_0 = (1 << 0);
     static const uint8_t BIT_1 = (1 << 1);
     static const uint8_t BIT_2 = (1 << 2);

@@ -5,7 +5,7 @@ SRC = src/
 INC = include/
 CPPFLAGS = -std=c++14 -g -Wall -Wextra -pedantic -I $(INC)
 LDFLAGS =  $(INC)*.cpp #-lncursesw
-FILES = main CPU MMU Cartridge InterruptService TimerService XGPU Sprite
+FILES = main CPU MMU DisplayManager Cartridge InterruptService TimerService XGPU Sprite Joypad
 OBJS = $(addprefix $(BIN), $(FILES:=.o))
 
 
@@ -28,14 +28,17 @@ Cartridge: $(SRC)Cartridge.h
 MBC: $(SRC)MBC.h
 	$(CC) $(CPPFLAGS) -c $(SRC)$@.cpp -o $(BIN)$@.o
 
-# TextGPU: $(SRC)Graphics/TextGPU.h
-	# $(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -l $(SRC)Graphics/iGPU.h  -l $(SRC)MMU.h
+DisplayManager: $(SRC)Graphics/DisplayManager.h
+	$(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -lX11
 
 XGPU: $(SRC)Graphics/XGPU.h
-	$(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -l $(SRC)Graphics/iGPU.h -lX11
+	$(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o -l $(SRC)Graphics/iGPU.h
 
 Sprite: $(SRC)Graphics/Sprite.h
 	$(CC) $(CPPFLAGS) -c $(SRC)Graphics/$@.cpp -o $(BIN)$@.o
+
+Joypad: $(SRC)Joypad.h
+	$(CC) $(CPPFLAGS) -c $(SRC)$@.cpp -o $(BIN)$@.o
 
 InterruptService: $(SRC)InterruptService.h
 	$(CC) $(CPPFLAGS) -c $(SRC)$@.cpp -o $(BIN)$@.o

@@ -42,7 +42,7 @@ private:
 public:
     Joypad(MMU* m, DisplayManager* d);
 
-    void CheckKeyInput();
+    uint16_t CheckKeyInput();
 };
 
 #endif

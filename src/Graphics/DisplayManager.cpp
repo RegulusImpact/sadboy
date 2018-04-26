@@ -144,24 +144,12 @@ void DisplayManager::Draw(XColor color, uint8_t y, uint8_t x) {
 }
 
 uint16_t DisplayManager::GetKeyInput() {
-    FD_ZERO(&in_fds);
-    FD_SET(x11_fd, &in_fds);
+    if (XPending(display)) {
+        XNextEvent(display, &event);
 
-    tv.tv_usec = 0;
-    tv.tv_sec = 0;
-
-    if (select(x11_fd+1, &in_fds, 0, 0, &tv)) {
-        // printf("Event Received!\n");
-
-        while (XPending(display)) {
-            XNextEvent(display, &event);
-
-            if (event.type == KeyPress) {
-                return event.xkey.keycode;
-            }
+        if (event.type == KeyPress) {
+            return event.xkey.keycode;
         }
-    } else {
-        // printf("Timer Fired!\n");
     }
 
     return 0x00;
